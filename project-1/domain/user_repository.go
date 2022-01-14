@@ -2,7 +2,7 @@ package domain
 
 import (
 	"fmt"
-	"github.com/cagnosolutions/go-web-ddd/user-project/resources/file/db"
+	"github.com/cagnosolutions/go-web-ddd/project-1/resources/file/db"
 )
 
 type UserRepository interface {

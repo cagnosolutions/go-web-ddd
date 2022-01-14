@@ -2,7 +2,7 @@ package controller
 
 import (
 	"encoding/json"
-	"github.com/cagnosolutions/go-web-ddd/user-project/service"
+	"github.com/cagnosolutions/go-web-ddd/project-1/service"
 	"net/http"
 )
 

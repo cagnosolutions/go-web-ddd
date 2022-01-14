@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/cagnosolutions/go-web-ddd/user-project/controller"
-	"github.com/cagnosolutions/go-web-ddd/user-project/domain"
-	"github.com/cagnosolutions/go-web-ddd/user-project/service"
+	"github.com/cagnosolutions/go-web-ddd/project-1/controller"
+	"github.com/cagnosolutions/go-web-ddd/project-1/domain"
+	"github.com/cagnosolutions/go-web-ddd/project-1/service"
 	"log"
 	"net/http"
 )
