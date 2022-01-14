@@ -25,7 +25,7 @@ func main() {
 	userRepo := domain.NewUserSQLRepository(db)
 
 	// create if not exists
-	userRepo.CreateTable()
+	userRepo.Init()
 
 }
 
