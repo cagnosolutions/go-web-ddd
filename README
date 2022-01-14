@@ -1,0 +1,29 @@
+BASIC PROJECT LAYOUT IDEA
+
+my-project/
+    app.json
+    cmd/
+        app/
+            main.go
+    internal/
+        app/
+            configs/
+                data-config.go
+                mux-config.go
+                tmpl-config.go
+            data/
+                datarepo-interface.go
+            service/
+                service-interface.go
+            controller/
+                controller-interface.go
+            domain/
+                item.go
+                order.go
+                user.go
+        web/
+            static/
+                css/
+                img/
+                js/
+            templates/
