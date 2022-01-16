@@ -15,7 +15,7 @@ type UserController struct {
 }
 
 // AddService helps satisfy the Controller interface
-func (con *UserController) AddService(service webapp.Service) {
+func (con *UserController) AddService(service webapp.Servicer) {
 	if service == nil {
 		panic("got empty service")
 	}

@@ -7,7 +7,7 @@ import (
 )
 
 // MemoryDataSource is an in memory data source
-// that implements the lower level DAO interface
+// that implements the lower level DataAccesser interface
 type MemoryDataSource struct {
 	data *sync.Map
 	aid  *webapp.AutoID
@@ -22,7 +22,7 @@ func NewMemoryDataSource() *MemoryDataSource {
 	return mds
 }
 
-// Add helps satisfy the DAO interface
+// Add helps satisfy the DataAccesser interface
 // Add must only add to the underlying storage if it does not exist
 func (m *MemoryDataSource) Add(e webapp.Entity) (int, error) {
 	// get the id from the entity
@@ -38,7 +38,7 @@ func (m *MemoryDataSource) Add(e webapp.Entity) (int, error) {
 	return 0, errors.New("entry already exists, cannot add")
 }
 
-// Get helps satisfy the DAO interface
+// Get helps satisfy the DataAccesser interface
 func (m *MemoryDataSource) Get(id int) (webapp.Entity, error) {
 	// attempt to get the entry by id
 	v, found := m.data.Load(id)
@@ -53,7 +53,7 @@ func (m *MemoryDataSource) Get(id int) (webapp.Entity, error) {
 	return e, nil
 }
 
-// GetAll helps satisfy the DAO interface
+// GetAll helps satisfy the DataAccesser interface
 func (m *MemoryDataSource) GetAll() ([]webapp.Entity, error) {
 	// init vars
 	var err error
@@ -71,7 +71,7 @@ func (m *MemoryDataSource) GetAll() ([]webapp.Entity, error) {
 	return ee, err
 }
 
-// Set helps satisfy the DAO interface
+// Set helps satisfy the DataAccesser interface
 func (m *MemoryDataSource) Set(e webapp.Entity) error {
 	// get the id from the entity
 	id := e.GetID()
@@ -87,7 +87,7 @@ func (m *MemoryDataSource) Set(e webapp.Entity) error {
 	return nil
 }
 
-// Del helps satisfy the DAO interface
+// Del helps satisfy the DataAccesser interface
 func (m *MemoryDataSource) Del(id int) error {
 	// delete the entity by id
 	m.data.Delete(id)

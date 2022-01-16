@@ -5,13 +5,13 @@ import (
 	"net/http"
 )
 
-// UserService implements the Service interface
+// UserService implements the Servicer interface
 // and provides methods for the controller to use
 type UserService struct {
 	userRepo *UserRepository
 }
 
-// AddRepository helps satisfy the Service interface
+// AddRepository helps satisfy the Servicer interface
 func (service *UserService) AddRepository(repo webapp.Repository) {
 	if repo == nil {
 		panic("got empty repo")

@@ -7,7 +7,7 @@ type Entity interface {
 	SetID(id int)
 }
 
-type DAO interface {
+type DataAccesser interface {
 	Add(e Entity) (int, error)  // add a new entity, return id or error
 	Get(id int) (Entity, error) // get an entity by id, return any error
 	GetAll() ([]Entity, error)  // get all entities, return number found or error
@@ -16,20 +16,14 @@ type DAO interface {
 }
 
 type Repository interface {
-	// WithDAO
-	// UsingDAO
-	AddDAO(dao DAO)
+	AddDataAccesser(dao DataAccesser)
 }
 
-type Service interface {
-	// WithRepository
-	// UsingRepository
+type Servicer interface {
 	AddRepository(repository Repository)
 }
 
 type Controller interface {
-	// WithService
-	// UsingService
-	AddService(service Service)
+	AddService(service Servicer)
 	HandleBase(w http.ResponseWriter, r *http.Request)
 }

@@ -8,11 +8,11 @@ import (
 // UserRepository implements the Repository interface
 // and provides methods for the service to use
 type UserRepository struct {
-	userDao webapp.DAO
+	userDao webapp.DataAccesser
 }
 
 // AddDAO helps satisfy the Repository interface
-func (repo *UserRepository) AddDAO(dao webapp.DAO) {
+func (repo *UserRepository) AddDataAccesser(dao webapp.DataAccesser) {
 	if dao == nil {
 		panic("got empty dao")
 	}

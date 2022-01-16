@@ -4,11 +4,11 @@ import (
 	"github.com/cagnosolutions/go-web-ddd/pkg/webapp"
 )
 
-func WireUser(dao webapp.DAO) *UserController {
+func WireUser(dao webapp.DataAccesser) *UserController {
 
 	// setup and "wire" user repo
 	userRepo := new(UserRepository)
-	userRepo.AddDAO(dao)
+	userRepo.AddDataAccesser(dao)
 
 	// setup and "wire" user service
 	userService := new(UserService)
