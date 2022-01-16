@@ -11,16 +11,12 @@ type UserRepository struct {
 	userDao webapp.DAO
 }
 
-// WithDAO helps satisfy the Repository interface
-func (repo *UserRepository) WithDAO(daos ...webapp.DAO) error {
-	if daos == nil || len(daos) < 1 {
-		return errors.New("did not receive any dao")
+// AddDAO helps satisfy the Repository interface
+func (repo *UserRepository) AddDAO(dao webapp.DAO) {
+	if dao == nil {
+		panic("got empty dao")
 	}
-	if len(daos) > 1 {
-		return errors.New("got too many daos")
-	}
-	repo.userDao = daos[0]
-	return nil
+	repo.userDao = dao
 }
 
 func (repo *UserRepository) AddUser(u *User) (int, error) {

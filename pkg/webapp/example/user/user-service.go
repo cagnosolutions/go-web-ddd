@@ -1,7 +1,6 @@
 package user
 
 import (
-	"errors"
 	"github.com/cagnosolutions/go-web-ddd/pkg/webapp"
 	"net/http"
 )
@@ -12,13 +11,12 @@ type UserService struct {
 	userRepo *UserRepository
 }
 
-// WithRepo helps satisfy the Service interface
-func (service *UserService) WithRepo(repo webapp.Repository) error {
+// AddRepository helps satisfy the Service interface
+func (service *UserService) AddRepository(repo webapp.Repository) {
 	if repo == nil {
-		return errors.New("got empty repo")
+		panic("got empty repo")
 	}
 	service.userRepo = repo.(*UserRepository)
-	return nil
 }
 
 func (service *UserService) AddNewUser(r *http.Request) (int, error) {

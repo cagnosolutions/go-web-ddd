@@ -1,7 +1,6 @@
 package user
 
 import (
-	"errors"
 	"fmt"
 	"github.com/cagnosolutions/go-web-ddd/pkg/webapp"
 	"html/template"
@@ -15,17 +14,16 @@ type UserController struct {
 	tmpls       *template.Template
 }
 
-// WithService helps satisfy the Controller interface
-func (con *UserController) WithService(service webapp.Service) error {
+// AddService helps satisfy the Controller interface
+func (con *UserController) AddService(service webapp.Service) {
 	if service == nil {
-		return errors.New("got empty service")
+		panic("got empty service")
 	}
 	con.userService = service.(*UserService)
-	return nil
 }
 
-// RootHandler helps satisfy the Controller interface
-func (con *UserController) RootHandler(w http.ResponseWriter, r *http.Request) {
+// HandleBase helps satisfy the Controller interface
+func (con *UserController) HandleBase(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/user":
 		con.handleBaseRequest(w, r)

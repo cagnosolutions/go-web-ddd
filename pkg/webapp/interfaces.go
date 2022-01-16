@@ -16,14 +16,20 @@ type DAO interface {
 }
 
 type Repository interface {
-	WithDAO(daos ...DAO) error
+	// WithDAO
+	// UsingDAO
+	AddDAO(dao DAO)
 }
 
 type Service interface {
-	WithRepo(repo Repository) error
+	// WithRepository
+	// UsingRepository
+	AddRepository(repository Repository)
 }
 
 type Controller interface {
-	WithService(service Service) error
-	RootHandler(w http.ResponseWriter, r *http.Request)
+	// WithService
+	// UsingService
+	AddService(service Service)
+	HandleBase(w http.ResponseWriter, r *http.Request)
 }
