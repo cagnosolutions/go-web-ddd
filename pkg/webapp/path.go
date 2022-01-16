@@ -1,8 +1,10 @@
 package webapp
 
-import "strings"
+import (
+	"strings"
+)
 
-const pathSeperator = "/:"
+const pathSeperator = "/"
 
 type path struct {
 	Path string

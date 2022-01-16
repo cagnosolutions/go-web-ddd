@@ -15,7 +15,7 @@ func main() {
 	loadUser(dao)
 
 	// test path
-	paths := []string{"/", "/user", "/user/", "/user/:1", "/user/:1/", "/user/1/", "/user/1/:id"}
+	paths := []string{"/", "/user", "/user/", "/user/1", "/user/1/", "/user/3/order/24"}
 	for i := range paths {
 		p := webapp.NewPath(paths[i])
 		fmt.Printf("original=%q\t\tpath=%q\tid=%q\thasID=%v\n",
