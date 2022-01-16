@@ -2,7 +2,7 @@ package webapp
 
 import "strings"
 
-const pathSeperator = "/"
+const pathSeperator = "/:"
 
 type path struct {
 	Path string
