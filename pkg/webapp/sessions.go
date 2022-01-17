@@ -36,6 +36,17 @@ func (s *session) Del(key string) {
 	s.data.Del(key)
 }
 
+func (ss *sessionStore) Secure(role string, h http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		if u, ok := ss.CurrentUser(r); !ok || !u.Has(role) {
+			http.NotFound(w, r)
+			return
+		}
+		h.ServeHTTP(w, r)
+	}
+	return http.HandlerFunc(fn)
+}
+
 type sessionStore struct {
 	sessCookID    string
 	rateInSeconds int64
@@ -99,6 +110,15 @@ func (ss *sessionStore) EndSession(w http.ResponseWriter, r *http.Request) {
 	ss.sessions.Delete(c.Value)
 	c = NewCookie(w, ss.sessCookID, c.Value, time.Now(), -1)
 	http.SetCookie(w, c)
+}
+
+func (ss *sessionStore) CurrentUser(r *http.Request) (*session, bool) {
+	c := GetCookie(r, ss.sessCookID)
+	if c == nil {
+		return nil, false
+	}
+	v, _ := ss.sessions.Load(c.Value)
+	return v.(*session), true
 }
 
 func (ss *sessionStore) gc() {

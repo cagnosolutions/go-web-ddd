@@ -11,7 +11,7 @@ type UserRepository struct {
 	userDao webapp.DataAccesser
 }
 
-// AddDAO helps satisfy the Repository interface
+// AddDataAccesser helps satisfy the Repository interface
 func (repo *UserRepository) AddDataAccesser(dao webapp.DataAccesser) {
 	if dao == nil {
 		panic("got empty dao")

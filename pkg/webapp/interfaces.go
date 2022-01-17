@@ -25,5 +25,5 @@ type Servicer interface {
 
 type Controller interface {
 	AddService(service Servicer)
-	HandleBase(w http.ResponseWriter, r *http.Request)
+	HandleBase() http.Handler
 }

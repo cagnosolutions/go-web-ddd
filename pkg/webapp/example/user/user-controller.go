@@ -23,17 +23,20 @@ func (con *UserController) AddService(service webapp.Servicer) {
 }
 
 // HandleBase helps satisfy the Controller interface
-func (con *UserController) HandleBase(w http.ResponseWriter, r *http.Request) {
-	switch r.URL.Path {
-	case "/user":
-		con.handleBaseRequest(w, r)
-	case "/user/":
-		con.handleOneUser(w, r)
-	case "/user/all":
-		con.handleAllUsers(w, r)
-	default:
-		con.handleUserError(w, r)
+func (con *UserController) HandleBase() http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/user":
+			con.handleBaseRequest(w, r)
+		case "/user/":
+			con.handleOneUser(w, r)
+		case "/user/all":
+			con.handleAllUsers(w, r)
+		default:
+			con.handleUserError(w, r)
+		}
 	}
+	return http.HandlerFunc(fn)
 }
 
 func (con *UserController) handleBaseRequest(w http.ResponseWriter, r *http.Request) {

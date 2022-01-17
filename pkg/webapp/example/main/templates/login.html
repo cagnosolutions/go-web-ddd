@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {{ template "header.stub.html" }}
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/select2/3.5.2/select2.min.css"/>
+    <link rel="stylesheet" href="/static/css/select2-bootstrap-override.css"/>
+    <title>Zoom | Login</title>
+</head>
+
+<body data-spy="scroll" data-target=".navbar-collapse" data-offset="100">
+
+<!-- navigation -->
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/home">
+                {{ template "brand.stub.html" }}
+            </a>
+        </div>
+        <div class="collapse navbar-collapse">
+            <ul class="nav navbar-nav navbar-right">
+                <li><a href="/home"> Home</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+<div class="navbar-pad"></div>
+<!-- navigation -->
+
+<!-- blue nav -->
+<section class="title-section main-color">
+    <div class="container">
+        <h4>
+            Create Account / Login
+            <span class="pull-right">
+                        <a href="/video/2?path=/login&name=login" class="fa-inverse">
+							<i class="fa fa-film"></i> Help
+						</a>
+                    </span>
+        </h4>
+    </div>
+</section>
+<!-- blue nav -->
+
+<!-- content -->
+<section class="wow fadeIn">
+    <div class="container">
+        <div class="row" id="faqs-row">
+            <div class="col-lg-offset-4 col-lg-4 col-sm-offset-3 col-sm-6">
+                <div class="panel-group" id="accordion">
+                    <div class="panel panel-primary">
+                        <div class="panel-heading text-center">
+                            <a data-toggle="collapse" data-parent="#accordion" href="#login" style="color:#fff;">
+                                Login to your account
+                            </a>
+                        </div>
+                        <div id="login" class="panel-collapse collapse ${(login??)?string('in', '')}">
+                            <div class="panel-body">
+                                <form id="login-form" role="form" method="post" action="/login">
+                                    <div class="form-group">
+                                        <input type="" name="username" class="form-control" placeholder="Email"
+                                               required="true" value="${username!}"/>
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="password" name="password" class="form-control"
+                                               placeholder="Password" required="true"/>
+                                    </div>
+                                    <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+                                    <button class="btn btn-md btn-success btn-block" type="submit">Login</button>
+                                </form>
+                                <br/>
+                                <div class="text-center">
+                                    <a href="/reset/password" class="text-primary small">Trouble logging in?</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="panel panel-primary">
+                        <div class="panel-heading text-center">
+                            <a data-toggle="collapse" data-parent="#accordion" href="#register" style="color:#fff;">
+                                Create a new account
+                            </a>
+                        </div>
+                        <div id="register" class="panel-collapse collapse ${(register??)?string('in', '')}">
+                            <div class="panel-body">
+                                <form id="register-form" role="form" method="post" action="/register">
+                                    <div class="form-group">
+                                        <span class="text-error">${(errors.company)!}</span>
+                                        <input type="text" id="company" name="company" class="form-control"
+                                               placeholder="Company" value="${(user.company)!}" required="true"/>
+                                    </div>
+                                    <div class="form-group">
+                                        <span class="text-error">${(errors.name)!}</span>
+                                        <input type="text" id="name" name="name" class="form-control"
+                                               placeholder="Name" value="${(user.name)!}" required="true"/>
+                                    </div>
+                                    <div class="form-group">
+                                        <span class="text-error">${(errors.username)!}</span>
+                                        <input type="email" id="username" name="username" class="form-control"
+                                               placeholder="Email" value="${(user.username)!}" required="true"/>
+                                    </div>
+                                    <div class="form-group">
+                                        <span class="text-error">${(errors.phone)!}</span>
+                                        <input type="text" id="phone" name="phone" class="form-control"
+                                               placeholder="Phone" value="${(user.phone)!}"/>
+                                    </div>
+                                    <div class="form-group">
+                                        <span class="text-error">${(errors.street)!}</span>
+                                        <input type="text" id="street" name="street" class="form-control"
+                                               placeholder="Street" value="${(user.street)!}" required="true"/>
+                                    </div>
+                                    <div class="form-group">
+                                        <span class="text-error">${(errors.city)!}</span>
+                                        <input type="text" id="city" name="city" class="form-control"
+                                               placeholder="City" value="${(user.city)!}" required="true"/>
+                                    </div>
+                                    <div class="form-group row">
+                                        <div class="col-xs-6">
+                                            <span class="text-error">${(errors.state)!}</span>
+                                            <input type="text" id="state" name="state" class="form-control"
+                                                   placeholder="State" value="${(user.state)!}" required="true"/>
+                                        </div>
+                                        <div class="col-xs-6">
+                                            <span class="text-error">${(errors.zip)!}</span>
+                                            <input type="text" id="zip" name="zip" class="form-control"
+                                                   placeholder="Zip" value="${(user.zip)!}" required="true"/>
+                                        </div>
+                                    </div>
+                                    <!-- toggle show password input -->
+                                    <div class="form-group">
+                                        <span class="text-error">${(errors.password)!}</span>
+                                        <div class="input-group">
+                                            <input type="password" id="toggle-pass" name="password" class="form-control"
+                                                   placeholder="Password" value="${(user.password)!}" required="true"/>
+                                            <span class="input-group-btn">
+                                                        <button id="toggle-pass" type="button" class="btn btn-default"
+                                                                data-toggle="tooltip" data-placement="right"
+                                                                title="Click to show/hide your password">
+                                                            <i class="fa fa-eye-slash"></i>
+                                                        </button>
+                                                    </span>
+                                        </div>
+                                    </div>
+                                    <!-- toggle show password input -->
+
+                                    <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+                                    <button class="btn btn-md btn-success btn-block" type="submit">Create</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- scripts -->
+{{ template "scripts.stub.html" }}
+<script src="//cdnjs.cloudflare.com/ajax/libs/select2/3.5.2/select2.min.js"></script>
+<script src="/static/js/state.js"></script>
+<script src="/static/js/login.js"></script>
+<!-- scripts -->
+
+</body>
+
+<!-- footer -->
+{{ template "footer.stub.html" }}
+<!-- footer -->
+
+</html>
