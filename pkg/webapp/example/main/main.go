@@ -12,9 +12,9 @@ import (
 func main() {
 
 	// init template
-	tc := webapp.NewTemplateCache("pkg/webapp/example/main/templates/*.html", nil)
+	tc := webapp.NewTemplateCache("pkg/webapp/example/main/web/templates/*.html", nil)
 	fmt.Println(tc.DefinedTemplates())
-	tc.ParseGlob("pkg/webapp/example/main/templates/stubs/*.html")
+	tc.ParseGlob("pkg/webapp/example/main/web/templates/stubs/*.html")
 	fmt.Println(tc.DefinedTemplates())
 
 	// server
@@ -22,8 +22,14 @@ func main() {
 	mux.Handle("/index", handleIndex(tc))
 	mux.Handle("/login", handleLogin(tc))
 	mux.Handle("/templates", handleTemplates(tc))
+	mux.Handle("/bootstrap", handleBootstrapExample())
+	mux.Handle("/static/", StaticHandler("/static", "pkg/webapp/example/main/web/static/"))
 	log.Fatal(http.ListenAndServe(":8080", mux))
 
+}
+
+func StaticHandler(prefix, path string) http.Handler {
+	return http.StripPrefix(prefix, http.FileServer(http.Dir(path)))
 }
 
 func handleIndex(t *webapp.TemplateCache) http.Handler {
@@ -43,6 +49,14 @@ func handleLogin(t *webapp.TemplateCache) http.Handler {
 func handleTemplates(t *webapp.TemplateCache) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "%s", t.DefinedTemplates())
+		return
+	}
+	return http.HandlerFunc(fn)
+}
+
+func handleBootstrapExample() http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "pkg/webapp/example/main/web/templates/bootstrap-template.html")
 		return
 	}
 	return http.HandlerFunc(fn)

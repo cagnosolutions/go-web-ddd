@@ -4,11 +4,18 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"os"
 )
 
 type TemplateCache struct {
-	t       *template.Template
-	FuncMap template.FuncMap
+	FuncMap       template.FuncMap
+	t             *template.Template
+	basePattern   string
+	extraPatterns []string
+}
+
+func initTemplates(pattern string, funcMap template.FuncMap) *template.Template {
+	return template.Must(template.New("*").Funcs(funcMap).ParseGlob(pattern))
 }
 
 func NewTemplateCache(pattern string, funcMap template.FuncMap) *TemplateCache {
@@ -17,11 +24,8 @@ func NewTemplateCache(pattern string, funcMap template.FuncMap) *TemplateCache {
 		funcMap = template.FuncMap{}
 	}
 	tc.FuncMap = funcMap
-	t, err := template.New("*").Funcs(tc.FuncMap).ParseGlob(pattern)
-	if err != nil {
-		panic(err)
-	}
-	tc.t = t
+	tc.t = initTemplates(pattern, tc.FuncMap)
+	tc.basePattern = pattern
 	return tc
 }
 
@@ -31,6 +35,7 @@ func (tc *TemplateCache) ParseGlob(pattern string) {
 		panic(err)
 	}
 	tc.t = t
+	tc.extraPatterns = append(tc.extraPatterns, pattern)
 }
 
 func (tc *TemplateCache) ExecuteTemplate(w http.ResponseWriter, name string, data interface{}) {
@@ -47,10 +52,26 @@ func (tc *TemplateCache) DefinedTemplates() string {
 	return tc.t.DefinedTemplates()
 }
 
-func HandleWithTemplate(h http.Handler, t *template.Template) http.Handler {
-
-	fn := func(w http.ResponseWriter, r *http.Request) {
-
+func (tc *TemplateCache) ReloadTemplates() {
+	tc.t = nil
+	tc.t = initTemplates(tc.basePattern, tc.FuncMap)
+	for i := range tc.extraPatterns {
+		t, err := tc.t.Funcs(tc.FuncMap).ParseGlob(tc.extraPatterns[i])
+		if err != nil {
+			panic(err)
+		}
+		tc.t = t
 	}
-	return http.HandlerFunc(fn)
+}
+
+func FileHasChanged(file string, lastModTime int64) (int64, bool) {
+	fi, err := os.Stat(file)
+	if err != nil {
+		return -1, false
+	}
+	modTime := fi.ModTime().Unix()
+	if modTime > lastModTime {
+		return modTime, true
+	}
+	return modTime, false
 }
