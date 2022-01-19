@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/cagnosolutions/go-web-ddd/pkg/webapp"
+	"log"
 	"net/http"
 )
 
