@@ -22,16 +22,18 @@
                 <br>
                 <legend>Login</legend>
                 <hr>
-                <form action="/login" method="post" class="needs-validation" novalidate>
+                <form action="/login" method="post" class="needs-validation" novalidate="novalidate" autocomplete="off">
                     <div class="mb-3">
                         <label for="username" class="form-label">Username</label>
                         <input type="email" class="form-control" name="username" id="username" aria-describedby="username-help">
-                        <div id="username-help" class="form-text">Please login using your email address</div>
+                        <!--<div id="username-help" class="form-text">Please login using your email address</div>-->
+                        <!--<div class="invalid-feedback">Username error</div>-->
                     </div>
                     <div class="mb-3">
                         <label for="password" class="form-label">Password</label>
                         <input type="password" class="form-control" name="password" id="password" aria-describedby="password-help">
-                        <div id="password-help" class="form-text">Password must have at least 6 characters</div>
+                        <!--<div id="password-help" class="form-text">Password must have at least 6 characters</div>-->
+                        <!--<div class="invalid-feedback">Password error</div>-->
                     </div>
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                         <button type="submit" class="btn btn-success me-md-2">Login</button>

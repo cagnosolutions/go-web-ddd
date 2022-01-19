@@ -49,9 +49,11 @@ func handleLogin(t *webapp.TemplateCache, ss *webapp.SessionStore) http.Handler 
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
+			fmt.Println(">>> [GET] >>> LOGIN")
 			t.ExecuteTemplate(w, "login.html", map[string]interface{}{})
 			return
 		case http.MethodPost:
+			fmt.Println(">>> [POST] >>> LOGIN")
 			err := r.ParseForm()
 			if err != nil {
 				log.Fatal(err)
