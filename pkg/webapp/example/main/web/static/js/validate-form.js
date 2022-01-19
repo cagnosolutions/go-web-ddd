@@ -4,7 +4,7 @@
 const loginValidation = new window.JustValidate('#login-form', {
    errorFieldCssClass: 'is-invalid',
    successFieldCssClass: 'is-valid',
-   lockForm: false,
+   lockForm: true,
 });
 loginValidation
    .addField('#username', [
@@ -15,6 +15,7 @@ loginValidation
       {rule:'required', errorMessage:'Password is required!'},
       {rule: 'password'}
    ])
-   .onSuccess((e) =>{
-      console.log('validation passed!');
+   .onSuccess((e) => {
+      console.log('validation passed!', e);
+      e.submitter.form.submit();
    });
