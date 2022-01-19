@@ -15,7 +15,6 @@ loginValidation
       {rule:'required', errorMessage:'Password is required!'},
       {rule: 'password'}
    ])
-   .onSuccess((ev) =>{
-      //ev.preventDefault();
+   .onSuccess((e) =>{
       console.log('validation passed!');
    });
