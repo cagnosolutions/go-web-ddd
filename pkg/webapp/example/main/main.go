@@ -17,11 +17,16 @@ func main() {
 	tc.ParseGlob("pkg/webapp/example/main/web/templates/stubs/*.html")
 	fmt.Println(tc.DefinedTemplates())
 
+	// init session store
+	ss := webapp.NewSessionStore("sess-id", 60)
+
 	// server
 	mux := http.NewServeMux()
 	mux.Handle("/error/", webapp.ErrorHandler(tc.Lookup("error.html")))
 	mux.Handle("/index", handleIndex(tc))
-	mux.Handle("/login", handleLogin(tc))
+	mux.Handle("/login", handleLogin(tc, ss))
+	mux.Handle("/logout", handleLogout(ss))
+	mux.Handle("/secure/home", handleSecureHome(ss))
 	mux.Handle("/templates", handleTemplates(tc))
 	mux.Handle("/bootstrap", handleBootstrapExample())
 	mux.Handle("/static/", StaticHandler("/static", "pkg/webapp/example/main/web/static/"))
@@ -40,9 +45,47 @@ func handleIndex(t *webapp.TemplateCache) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func handleLogin(t *webapp.TemplateCache) http.Handler {
+func handleLogin(t *webapp.TemplateCache, ss *webapp.SessionStore) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		t.ExecuteTemplate(w, "login.html", map[string]interface{}{})
+		switch r.Method {
+		case http.MethodGet:
+			t.ExecuteTemplate(w, "login.html", map[string]interface{}{})
+			return
+		case http.MethodPost:
+			err := r.ParseForm()
+			if err != nil {
+				log.Fatal(err)
+			}
+			u, p := r.Form.Get("username"), r.Form.Get("password")
+			if u == "admin" && p == "admin" {
+				ss.NewSession(w, r)
+				http.Redirect(w, r, "/secure/home", http.StatusTemporaryRedirect)
+				return
+			}
+			http.Redirect(w, r, "/login?error=invalid", http.StatusTemporaryRedirect)
+			return
+		}
+	}
+	return http.HandlerFunc(fn)
+}
+
+func handleSecureHome(ss *webapp.SessionStore) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		_, ok := ss.CurrentUser(r)
+		if !ok {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+		fmt.Fprintf(w, "this is my secure home")
+		return
+	}
+	return http.HandlerFunc(fn)
+}
+
+func handleLogout(ss *webapp.SessionStore) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		ss.EndSession(w, r)
+		http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 	}
 	return http.HandlerFunc(fn)
 }

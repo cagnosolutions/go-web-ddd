@@ -1,7 +1,6 @@
 package webapp
 
 import (
-	"fmt"
 	"html/template"
 	"net/http"
 	"os"
@@ -42,9 +41,12 @@ func (tc *TemplateCache) ExecuteTemplate(w http.ResponseWriter, name string, dat
 	w.Header().Set("content-type", "text/html; charset=utf-8")
 	err := tc.t.ExecuteTemplate(w, name, data)
 	if err != nil {
-		fmt.Printf("error: %s\n", err)
-		code := http.StatusExpectationFailed
-		http.Error(w, http.StatusText(code), code)
+		//fmt.Printf("error: %s\n", err)
+		//code := http.StatusExpectationFailed
+		//http.Error(w, http.StatusText(code), code)
+
+		http.RedirectHandler("/error/417", http.StatusTemporaryRedirect)
+		return
 	}
 }
 
