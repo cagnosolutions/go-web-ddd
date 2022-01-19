@@ -19,6 +19,7 @@ func main() {
 
 	// server
 	mux := http.NewServeMux()
+	mux.Handle("/error/", webapp.ErrorHandler(tc.Lookup("error.html")))
 	mux.Handle("/index", handleIndex(tc))
 	mux.Handle("/login", handleLogin(tc))
 	mux.Handle("/templates", handleTemplates(tc))

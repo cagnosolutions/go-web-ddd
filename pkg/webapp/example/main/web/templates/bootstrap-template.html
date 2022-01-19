@@ -48,7 +48,7 @@
         <br>
         <legend>Form #1, Normal Labels & Helpers</legend>
         <hr>
-        <form action="#">
+        <form action="#" class="needs-validation" novalidate>
             <div class="mb-3">
                 <label for="emailAddr1" class="form-label">Email address</label>
                 <input type="email" class="form-control" id="emailAddr1" aria-describedby="emailAddr1-help">
@@ -59,6 +59,9 @@
                 <label for="pass1" class="form-label">Password</label>
                 <input type="password" class="form-control" id="pass1" aria-describedby="pass1-help">
                 <div id="pass1-help" class="form-text">Password must have at least 6 characters</div>
+                <div class="invalid-feedback">
+                    Please provide a valid city.
+                </div>
             </div>
 
             <div class="mb-3">

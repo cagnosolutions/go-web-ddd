@@ -52,6 +52,10 @@ func (tc *TemplateCache) DefinedTemplates() string {
 	return tc.t.DefinedTemplates()
 }
 
+func (tc *TemplateCache) Lookup(name string) *template.Template {
+	return tc.t.Lookup(name)
+}
+
 func (tc *TemplateCache) ReloadTemplates() {
 	tc.t = nil
 	tc.t = initTemplates(tc.basePattern, tc.FuncMap)
