@@ -1,16 +1,12 @@
 package user
 
-import (
-	"crypto/sha256"
-)
-
 // User is a user model
 type User struct {
 	ID           int
 	FirstName    string
 	LastName     string
 	EmailAddress string
-	Password     [32]byte
+	Password     string
 	IsActive     bool
 }
 
@@ -24,7 +20,8 @@ func NewUser(fname, lname, email string) *User {
 }
 
 func (u *User) UpdatePassword(pass string) {
-	u.Password = sha256.Sum256([]byte(pass))
+	//u.Password = fmt.Sprintf("%s", sha256.Sum256([]byte(pass)))
+	u.Password = pass
 }
 
 // GetID helps satisfy the Entity interface

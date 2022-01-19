@@ -30,3 +30,17 @@ func (service *UserService) AddNewUser(r *http.Request) (int, error) {
 	// save the new user to the database
 	return service.userRepo.AddUser(user)
 }
+
+func (service *UserService) GetUser(un, pw string) *User {
+	var users []*User
+	count, err := service.userRepo.GetAllUsers(users)
+	if err != nil || count < 1 {
+		return nil
+	}
+	for i := range users {
+		if users[i].EmailAddress == un && users[i].Password == pw {
+			return users[i]
+		}
+	}
+	return nil
+}

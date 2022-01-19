@@ -9,9 +9,10 @@ import (
 )
 
 var (
-	tc *webapp.TemplateCache
-	ss *webapp.SessionStore
-	db webapp.DataAccesser
+	tc  *webapp.TemplateCache
+	ss  *webapp.SessionStore
+	db  webapp.DataAccesser
+	usr *user.WiredUser
 )
 
 func init() {
@@ -24,6 +25,17 @@ func init() {
 
 	// init in memory db
 	db = memory.NewMemoryDataSource()
+
+	// wire up user
+	usr = user.WireUser(db)
+	usr.UserRepository.AddUser(&user.User{
+		ID:           0,
+		FirstName:    "Jon",
+		LastName:     "Doe",
+		EmailAddress: "jdoe@example.com",
+		Password:     "jdoe007ok",
+		IsActive:     true,
+	})
 }
 
 func main() {
@@ -32,7 +44,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/error/", webapp.ErrorHandler(tc.Lookup("error.html")))
 	mux.Handle("/index", handleIndex(tc))
-	mux.Handle("/login", handleLogin(tc, ss))
+	mux.Handle("/login", handleLogin(tc, ss, usr.UserService))
 	mux.Handle("/logout", handleLogout(ss))
 	mux.Handle("/secure/home", handleSecureHome(ss))
 	mux.Handle("/templates", handleTemplates(tc))

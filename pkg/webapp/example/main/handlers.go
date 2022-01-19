@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/cagnosolutions/go-web-ddd/pkg/webapp"
+	"github.com/cagnosolutions/go-web-ddd/pkg/webapp/example/user"
 	"log"
 	"net/http"
 )
@@ -14,20 +15,40 @@ func handleIndex(t *webapp.TemplateCache) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func handleLogin(t *webapp.TemplateCache, ss *webapp.SessionStore) http.Handler {
+func handleLogin(t *webapp.TemplateCache, ss *webapp.SessionStore, us *user.UserService) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
+		fmt.Printf(">>> form: %+v\n", r.Form)
 		switch r.Method {
 		case http.MethodGet:
-			fmt.Println(">>> [GET] >>> LOGIN")
-			t.ExecuteTemplate(w, "login.html", map[string]interface{}{})
-			return
+			handleLoginGet(t).ServeHTTP(w, r)
 		case http.MethodPost:
-			fmt.Println(">>> [POST] >>> LOGIN")
-			err := r.ParseForm()
-			if err != nil {
-				log.Fatal(err)
-			}
-			u, p := r.Form.Get("username"), r.Form.Get("password")
+			handleLoginPost(ss, us).ServeHTTP(w, r)
+		}
+	}
+	return http.HandlerFunc(fn)
+}
+
+func handleLoginGet(t *webapp.TemplateCache) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println(">>> [GET] >>> LOGIN")
+		t.ExecuteTemplate(w, "login.html", map[string]interface{}{})
+	}
+	return http.HandlerFunc(fn)
+}
+
+func handleLoginPost(ss *webapp.SessionStore, us *user.UserService) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		err := r.ParseForm()
+		if err != nil {
+			log.Fatal(err)
+		}
+		user := r.Form.Get("username")
+		pass := r.Form.Get("password")
+		u := us.GetUser(user, pass)
+		if u == nil {
+			fmt.Println("no user found")
+		}
+		/*
 			if u == "admin" && p == "admin" {
 				ss.NewSession(w, r)
 				http.Redirect(w, r, "/secure/home", http.StatusTemporaryRedirect)
@@ -35,7 +56,7 @@ func handleLogin(t *webapp.TemplateCache, ss *webapp.SessionStore) http.Handler 
 			}
 			http.Redirect(w, r, "/login?error=invalid", http.StatusTemporaryRedirect)
 			return
-		}
+		*/
 	}
 	return http.HandlerFunc(fn)
 }
