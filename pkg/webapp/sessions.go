@@ -2,7 +2,6 @@ package webapp
 
 import (
 	"errors"
-	"math/rand"
 	"net/http"
 	"strings"
 	"sync"
@@ -11,47 +10,23 @@ import (
 
 var ErrNilSession = errors.New("session is nil, or not found")
 
-type AuthUser interface {
-	Register(username, password, role string)
-	Authenticate(username, password string) (*SystemUser, bool)
-}
-
-type SystemUser struct {
-	Username string
-	Password string
-	Role     string
-}
-
-type BasicAuthUser struct {
-	users *sync.Map
-}
-
-func NewBasicAuthUser() *BasicAuthUser {
-	return &BasicAuthUser{
-		users: new(sync.Map),
-	}
-}
-
-func (a *BasicAuthUser) Register(username, password, role string) {
-	a.users.Store(username, &SystemUser{
-		Username: username,
-		Password: password,
-		Role:     role,
-	})
-}
-
-func (a *BasicAuthUser) Authenticate(username, password string) (*SystemUser, bool) {
-	su, ok := a.users.Load(username)
-	if !ok {
-		return nil, false
-	}
-	if su.(*SystemUser).Password != password {
-		return nil, false
-	}
-	return su.(*SystemUser), true
-}
-
 const sessionIDLen = 32
+
+type SessionManager interface {
+	// New should create and return a new session
+	New() *Session
+
+	// Get should return a cached session
+	Get(r *http.Request) (*Session, bool)
+
+	// Save should persist session to the underlying store
+	// implementation. Passing a nil session erases it.
+	Save(w http.ResponseWriter, r *http.Request, s *Session)
+}
+
+func AddTime(t time.Time, duration time.Duration) time.Time {
+	return t.Add(duration)
+}
 
 type Session struct {
 	id      string
@@ -85,28 +60,21 @@ func (s *Session) ExpiresIn() int64 {
 	return s.expires.Unix() - time.Now().Unix()
 }
 
-type SessionStorer interface {
-	// New should create and return a new session
-	New() *Session
-
-	// Get should return a cached session
-	Get(r *http.Request) (*Session, bool)
-
-	// Save should persist session to the underlying store
-	// implementation. Passing a nil session erases it.
-	Save(w http.ResponseWriter, r *http.Request, s *Session)
-}
-
+// SessionStore implements the session manager interface
+// and is a basic session manager using cookies.
 type SessionStore struct {
-	sid      string // sid is the store id
-	rate     int64  // rate is the max idle session time in seconds
+	sid      string        // sid is the store id
+	timeout  time.Duration // expires is the max idle session time allowed
 	sessions *sync.Map
 }
 
-func NewSessionStore(sid string, rate int64) *SessionStore {
+// NewSessionStore takes a session id and a make session timeout. The sid
+// will be used as the key for all session cookies, and the timeout is the
+// maximum allowable idle session time before the session is expired
+func NewSessionStore(sid string, timeout time.Duration) *SessionStore {
 	ss := &SessionStore{
 		sid:      sid,
-		rate:     rate,
+		timeout:  timeout,
 		sessions: new(sync.Map),
 	}
 	go ss.gc()
@@ -116,9 +84,9 @@ func NewSessionStore(sid string, rate int64) *SessionStore {
 // New creates and returns a new session
 func (ss *SessionStore) New() *Session {
 	return &Session{
-		id:      randomN(sessionIDLen),
+		id:      RandStringN(sessionIDLen),
 		data:    make(map[string]interface{}),
-		expires: time.Now().Add(time.Duration(ss.rate) * time.Second),
+		expires: AddTime(time.Now(), ss.timeout),
 	}
 }
 
@@ -137,19 +105,19 @@ func (ss *SessionStore) Get(r *http.Request) (*Session, bool) {
 
 // Save persists the provided session. If you would like to remove a session, simply
 // pass it a nil session, and it will time the cookie out.
-func (ss *SessionStore) Save(w http.ResponseWriter, r *http.Request, s *Session) {
-	if s == nil {
-		c := GetCookie(r, ss.sid)
-		if c == nil {
+func (ss *SessionStore) Save(w http.ResponseWriter, r *http.Request, session *Session) {
+	if session == nil {
+		cook := GetCookie(r, ss.sid)
+		if cook == nil {
 			return
 		}
-		ss.sessions.Delete(c.Value)
-		http.SetCookie(w, NewCookie(ss.sid, c.Value, time.Now(), -1))
+		ss.sessions.Delete(cook.Value)
+		http.SetCookie(w, NewCookie(ss.sid, cook.Value, time.Now(), -1))
 		return
 	}
-	s.expires = time.Now().Add(time.Duration(ss.rate) * time.Second)
-	ss.sessions.Store(s.id, s)
-	http.SetCookie(w, NewCookie(ss.sid, s.id, s.expires, int(ss.rate)))
+	session.expires = AddTime(time.Now(), ss.timeout)
+	ss.sessions.Store(session.id, session)
+	http.SetCookie(w, NewCookie(ss.sid, session.id, session.expires, int(ss.timeout)))
 }
 
 func (ss *SessionStore) String() string {
@@ -168,30 +136,5 @@ func (ss *SessionStore) gc() {
 		}
 		return true
 	})
-	time.AfterFunc(time.Duration(ss.rate/2)*time.Second, func() { ss.gc() })
-}
-
-const (
-	letterBytes   = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	letterIdxBits = 6                    // 6 bits to represent a letter index
-	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
-	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
-)
-
-func randomN(n int) string {
-	var src = rand.NewSource(time.Now().UnixNano() + int64(rand.Uint64()))
-	b := make([]byte, n)
-	// A src.Int63() generates 63 random bits, enough for letterIdxMax characters!
-	for i, cache, remain := n-1, src.Int63(), letterIdxMax; i >= 0; {
-		if remain == 0 {
-			cache, remain = src.Int63(), letterIdxMax
-		}
-		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
-			b[i] = letterBytes[idx]
-			i--
-		}
-		cache >>= letterIdxBits
-		remain--
-	}
-	return string(b)
+	time.AfterFunc(ss.timeout/2, func() { ss.gc() })
 }
