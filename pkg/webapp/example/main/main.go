@@ -17,8 +17,11 @@ var (
 
 func init() {
 	// init templates
-	tc = webapp.NewTemplateCache("pkg/webapp/example/main/web/templates/*.html", nil)
-	tc.ParseGlob("pkg/webapp/example/main/web/templates/stubs/*.html")
+	tc = webapp.NewTemplateCache(&webapp.TemplateConfig{
+		BasePattern:   "pkg/webapp/example/main/web/templates/*.html",
+		ExtraPatterns: []string{"pkg/webapp/example/main/web/templates/stubs/*.html"},
+		FuncMap:       nil,
+	})
 
 	// init session store
 	ss = webapp.NewSessionStore(&webapp.SessionConfig{

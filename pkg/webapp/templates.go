@@ -6,12 +6,14 @@ import (
 	"os"
 )
 
-type Model struct {
-	Data interface{}
-	CSRF string
+type TemplateConfig struct {
+	BasePattern   string
+	ExtraPatterns []string
+	FuncMap       template.FuncMap
 }
 
 type TemplateCache struct {
+	*TemplateConfig
 	FuncMap       template.FuncMap
 	t             *template.Template
 	basePattern   string
@@ -22,14 +24,19 @@ func initTemplates(pattern string, funcMap template.FuncMap) *template.Template 
 	return template.Must(template.New("*").Funcs(funcMap).ParseGlob(pattern))
 }
 
-func NewTemplateCache(pattern string, funcMap template.FuncMap) *TemplateCache {
+func NewTemplateCache(conf *TemplateConfig) *TemplateCache {
 	tc := new(TemplateCache)
-	if funcMap == nil {
-		funcMap = template.FuncMap{}
+	if conf.FuncMap == nil {
+		conf.FuncMap = template.FuncMap{}
 	}
-	tc.FuncMap = funcMap
-	tc.t = initTemplates(pattern, tc.FuncMap)
-	tc.basePattern = pattern
+	tc.FuncMap = conf.FuncMap
+	tc.basePattern = conf.BasePattern
+	tc.t = initTemplates(tc.BasePattern, tc.FuncMap)
+	if conf.ExtraPatterns != nil {
+		for _, pattern := range conf.ExtraPatterns {
+			tc.ParseGlob(pattern)
+		}
+	}
 	return tc
 }
 
@@ -44,7 +51,7 @@ func (tc *TemplateCache) ParseGlob(pattern string) {
 
 func (tc *TemplateCache) ExecuteTemplate(w http.ResponseWriter, name string, data interface{}) {
 	w.Header().Set("content-type", "text/html; charset=utf-8")
-	err := tc.t.ExecuteTemplate(w, name, Model{Data: data})
+	err := tc.t.ExecuteTemplate(w, name, data)
 	if err != nil {
 		//code := http.StatusExpectationFailed
 		//http.Error(w, http.StatusText(code), code)

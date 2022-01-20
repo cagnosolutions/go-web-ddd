@@ -4,41 +4,70 @@ import (
 	"net/http"
 )
 
-type ServerConfig struct {
+type WebServerConfig struct {
 	ListenAddr     string
 	DefaultHandler http.Handler
 }
 
+type WebServer struct {
+	serv *http.Server
+}
+
+func NewWebServer(conf *WebServerConfig) *WebServer {
+	return &WebServer{
+		serv: &http.Server{
+			Addr:    conf.ListenAddr,
+			Handler: conf.DefaultHandler,
+		},
+	}
+}
+
 type ApplicationConfig struct {
 	*SessionConfig
+	*TemplateConfig
 	*BasicAuthUser
-	*ServerConfig
+	*WebServerConfig
+}
+
+type Application struct {
+	conf *ApplicationConfig
+	auth *BasicAuthUser
+	sess *SessionStore
+	tmpl *TemplateCache
+	serv *WebServer
 }
 
 func checkConf(conf *ApplicationConfig) {
 
 }
 
-type Application struct {
-	conf *ApplicationConfig
-	sess *SessionStore
-	auth *BasicAuthUser
-	serv *http.Server
-}
-
 func NewApplication(conf *ApplicationConfig) *Application {
 	checkConf(conf)
 	return &Application{
 		conf: conf,
-		sess: NewSessionStore(conf.SessionConfig),
 		auth: NewBasicAuthUser(),
-		serv: &http.Server{
-			Addr:    conf.ServerConfig.ListenAddr,
-			Handler: conf.ServerConfig.DefaultHandler,
-		},
+		sess: NewSessionStore(conf.SessionConfig),
+		tmpl: NewTemplateCache(conf.TemplateConfig),
+		serv: NewWebServer(conf.WebServerConfig),
 	}
 }
 
+func (app *Application) SessionStore() *SessionStore {
+	return app.sess
+}
+
+func (app *Application) TemplateCache() *TemplateCache {
+	return app.tmpl
+}
+
+func (app *Application) WebServer() *WebServer {
+	return app.serv
+}
+
+func (app *Application) SetServerHandler(h http.Handler) {
+	app.serv.serv.Handler = h
+}
+
 func (app *Application) ListenAndServe() error {
-	return app.serv.ListenAndServe()
+	return app.serv.serv.ListenAndServe()
 }
