@@ -23,9 +23,9 @@ func NewWebServer(conf *WebServerConfig) *WebServer {
 }
 
 type ApplicationConfig struct {
+	*BasicAuthUser
 	*SessionConfig
 	*TemplateConfig
-	*BasicAuthUser
 	*WebServerConfig
 }
 
