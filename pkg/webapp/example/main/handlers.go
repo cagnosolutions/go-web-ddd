@@ -15,7 +15,7 @@ func handleIndex(t *webapp.TemplateCache) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func handleLogin(t *webapp.TemplateCache, ss *webapp.SessionStore, us *user.UserService) http.Handler {
+func handleLogin(t *webapp.TemplateCache, ss *webapp.CookieStore, us *user.UserService) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf(">>> form: %+v\n", r.Form)
 		switch r.Method {
@@ -36,7 +36,7 @@ func handleLoginGet(t *webapp.TemplateCache) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func handleLoginPost(ss *webapp.SessionStore, us *user.UserService) http.Handler {
+func handleLoginPost(ss *webapp.CookieStore, us *user.UserService) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		err := r.ParseForm()
 		if err != nil {
@@ -61,7 +61,7 @@ func handleLoginPost(ss *webapp.SessionStore, us *user.UserService) http.Handler
 	return http.HandlerFunc(fn)
 }
 
-func handleSecureHome(ss *webapp.SessionStore) http.Handler {
+func handleSecureHome(ss *webapp.CookieStore) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		_, ok := ss.CurrentUser(r)
 		if !ok {
@@ -74,7 +74,7 @@ func handleSecureHome(ss *webapp.SessionStore) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func handleLogout(ss *webapp.SessionStore) http.Handler {
+func handleLogout(ss *webapp.CookieStore) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ss.EndSession(w, r)
 		http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)

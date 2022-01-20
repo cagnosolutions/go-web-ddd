@@ -10,7 +10,7 @@ import (
 
 var (
 	tc  *webapp.TemplateCache
-	ss  *webapp.SessionStore
+	ss  *webapp.CookieStore
 	db  webapp.DataAccesser
 	usr *user.WiredUser
 )

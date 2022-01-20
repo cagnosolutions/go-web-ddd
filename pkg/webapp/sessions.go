@@ -40,7 +40,7 @@ func (s *Session) Del(key string) {
 	s.data.Del(key)
 }
 
-func (ss *SessionStore) Secure(role string, h http.Handler) http.Handler {
+func (ss *CookieStore) Secure(role string, h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		if u, ok := ss.CurrentUser(r); !ok || !u.Has(role) {
 			http.NotFound(w, r)
@@ -51,14 +51,26 @@ func (ss *SessionStore) Secure(role string, h http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-type SessionStore struct {
+type SessionStore interface {
+	// New should create and return a new session
+	New(r http.Request, name string) *Session
+
+	// Get should return a cached session
+	Get(r http.Request, name string) (*Session, error)
+
+	// Save should persist session to the
+	// underlying store implementation
+	Save(w http.ResponseWriter, r *http.Request, s *Session) error
+}
+
+type CookieStore struct {
 	sessCookID    string
 	rateInSeconds int64
 	sessions      *sync.Map
 }
 
-func NewSessionStore(sessCookID string, rateInSeconds int64) *SessionStore {
-	ss := &SessionStore{
+func NewSessionStore(sessCookID string, rateInSeconds int64) *CookieStore {
+	ss := &CookieStore{
 		sessCookID:    sessCookID,
 		rateInSeconds: rateInSeconds,
 		sessions:      new(sync.Map),
@@ -67,7 +79,7 @@ func NewSessionStore(sessCookID string, rateInSeconds int64) *SessionStore {
 	return ss
 }
 
-func (ss *SessionStore) New() *Session {
+func (ss *CookieStore) New() *Session {
 	sid := randomN(sessionIDLen)
 	return &Session{
 		sid:  sid,
@@ -76,7 +88,7 @@ func (ss *SessionStore) New() *Session {
 	}
 }
 
-func (ss *SessionStore) Get(r *http.Request) (*Session, bool) {
+func (ss *CookieStore) Get(r *http.Request) (*Session, bool) {
 	c := GetCookie(r, ss.sessCookID)
 	if c == nil {
 		return nil, false
@@ -85,7 +97,7 @@ func (ss *SessionStore) Get(r *http.Request) (*Session, bool) {
 	return v.(*Session), ok
 }
 
-func (ss *SessionStore) Save(w http.ResponseWriter, s *Session) {
+func (ss *CookieStore) Save(w http.ResponseWriter, s *Session) {
 	c := NewCookie(w, ss.sessCookID, s.sid,
 		s.ts.Add(time.Duration(ss.rateInSeconds)*time.Second),
 		int(ss.rateInSeconds))
@@ -93,7 +105,7 @@ func (ss *SessionStore) Save(w http.ResponseWriter, s *Session) {
 	http.SetCookie(w, c)
 }
 
-func (ss *SessionStore) NewSession(w http.ResponseWriter, r *http.Request) {
+func (ss *CookieStore) NewSession(w http.ResponseWriter, r *http.Request) {
 	sid := randomN(sessionIDLen)
 	s := &Session{
 		sid:  sid,
@@ -107,7 +119,7 @@ func (ss *SessionStore) NewSession(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, c)
 }
 
-func (ss *SessionStore) GetSession(w http.ResponseWriter, r *http.Request) *Session {
+func (ss *CookieStore) GetSession(w http.ResponseWriter, r *http.Request) *Session {
 	c := GetCookie(r, ss.sessCookID)
 	if c == nil {
 		ss.NewSession(w, r)
@@ -117,7 +129,7 @@ func (ss *SessionStore) GetSession(w http.ResponseWriter, r *http.Request) *Sess
 	return v.(*Session)
 }
 
-func (ss *SessionStore) UpdateSession(w http.ResponseWriter, r *http.Request) {
+func (ss *CookieStore) UpdateSession(w http.ResponseWriter, r *http.Request) {
 	c := GetCookie(r, ss.sessCookID)
 	if c == nil {
 		return
@@ -133,7 +145,7 @@ func (ss *SessionStore) UpdateSession(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (ss *SessionStore) EndSession(w http.ResponseWriter, r *http.Request) {
+func (ss *CookieStore) EndSession(w http.ResponseWriter, r *http.Request) {
 	c := GetCookie(r, ss.sessCookID)
 	if c == nil {
 		return
@@ -143,7 +155,7 @@ func (ss *SessionStore) EndSession(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, c)
 }
 
-func (ss *SessionStore) CurrentUser(r *http.Request) (*Session, bool) {
+func (ss *CookieStore) CurrentUser(r *http.Request) (*Session, bool) {
 	c := GetCookie(r, ss.sessCookID)
 	if c == nil {
 		return nil, false
@@ -152,7 +164,7 @@ func (ss *SessionStore) CurrentUser(r *http.Request) (*Session, bool) {
 	return v.(*Session), true
 }
 
-func (ss *SessionStore) gc() {
+func (ss *CookieStore) gc() {
 	ss.sessions.Range(func(sid, sess interface{}) bool {
 		if (sess.(*Session).ts.Unix() + ss.rateInSeconds) < time.Now().Unix() {
 			ss.sessions.Delete(sid)
