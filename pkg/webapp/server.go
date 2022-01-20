@@ -2,6 +2,7 @@ package webapp
 
 import (
 	"net/http"
+	"time"
 )
 
 type WebServerConfig struct {
@@ -27,6 +28,24 @@ type ApplicationConfig struct {
 	*SessionConfig
 	*TemplateConfig
 	*WebServerConfig
+}
+
+var defaultApplicationConfig = &ApplicationConfig{
+	BasicAuthUser: NewBasicAuthUser(),
+	SessionConfig: &SessionConfig{
+		SessionID: "go_sess_id",
+		Domain:    "localhost",
+		Timeout:   time.Duration(15) * time.Minute,
+	},
+	TemplateConfig: &TemplateConfig{
+		BasePattern:   "web/templates/*.html",
+		ExtraPatterns: []string{"web/templates/stubs/*.html", "web/templates/misc/*.html"},
+		FuncMap:       nil,
+	},
+	WebServerConfig: &WebServerConfig{
+		ListenAddr:     ":8080",
+		DefaultHandler: nil,
+	},
 }
 
 type Application struct {
