@@ -4,10 +4,15 @@ import (
 	"net/http"
 )
 
+type ServerConfig struct {
+	ListenAddr     string
+	DefaultHandler http.Handler
+}
+
 type ApplicationConfig struct {
 	*SessionConfig
-	Addr    string
-	Handler http.Handler
+	*BasicAuthUser
+	*ServerConfig
 }
 
 func checkConf(conf *ApplicationConfig) {
@@ -28,8 +33,8 @@ func NewApplication(conf *ApplicationConfig) *Application {
 		sess: NewSessionStore(conf.SessionConfig),
 		auth: NewBasicAuthUser(),
 		serv: &http.Server{
-			Addr:    conf.Addr,
-			Handler: conf.Handler,
+			Addr:    conf.ServerConfig.ListenAddr,
+			Handler: conf.ServerConfig.DefaultHandler,
 		},
 	}
 }
