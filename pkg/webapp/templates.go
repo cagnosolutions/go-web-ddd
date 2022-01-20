@@ -14,10 +14,7 @@ type TemplateConfig struct {
 
 type TemplateCache struct {
 	*TemplateConfig
-	FuncMap       template.FuncMap
-	t             *template.Template
-	basePattern   string
-	extraPatterns []string
+	t *template.Template
 }
 
 func initTemplates(pattern string, funcMap template.FuncMap) *template.Template {
@@ -25,15 +22,15 @@ func initTemplates(pattern string, funcMap template.FuncMap) *template.Template 
 }
 
 func NewTemplateCache(conf *TemplateConfig) *TemplateCache {
-	tc := new(TemplateCache)
 	if conf.FuncMap == nil {
 		conf.FuncMap = template.FuncMap{}
 	}
-	tc.FuncMap = conf.FuncMap
-	tc.basePattern = conf.BasePattern
+	tc := &TemplateCache{
+		TemplateConfig: conf,
+	}
 	tc.t = initTemplates(tc.BasePattern, tc.FuncMap)
-	if conf.ExtraPatterns != nil {
-		for _, pattern := range conf.ExtraPatterns {
+	if tc.ExtraPatterns != nil {
+		for _, pattern := range tc.ExtraPatterns {
 			tc.ParseGlob(pattern)
 		}
 	}
@@ -46,7 +43,6 @@ func (tc *TemplateCache) ParseGlob(pattern string) {
 		panic(err)
 	}
 	tc.t = t
-	tc.extraPatterns = append(tc.extraPatterns, pattern)
 }
 
 func (tc *TemplateCache) ExecuteTemplate(w http.ResponseWriter, name string, data interface{}) {
@@ -70,9 +66,9 @@ func (tc *TemplateCache) Lookup(name string) *template.Template {
 
 func (tc *TemplateCache) ReloadTemplates() {
 	tc.t = nil
-	tc.t = initTemplates(tc.basePattern, tc.FuncMap)
-	for i := range tc.extraPatterns {
-		t, err := tc.t.Funcs(tc.FuncMap).ParseGlob(tc.extraPatterns[i])
+	tc.t = initTemplates(tc.BasePattern, tc.FuncMap)
+	for i := range tc.ExtraPatterns {
+		t, err := tc.t.Funcs(tc.FuncMap).ParseGlob(tc.ExtraPatterns[i])
 		if err != nil {
 			panic(err)
 		}
