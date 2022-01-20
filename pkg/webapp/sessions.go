@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+type AuthUser interface {
+	Authenticate(username, password string) bool
+}
+
 const sessionIDLen = 32
 
 type Session struct {
@@ -63,15 +67,42 @@ func NewSessionStore(sessCookID string, rateInSeconds int64) *SessionStore {
 	return ss
 }
 
-func (ss *SessionStore) NewSession(w http.ResponseWriter, r *http.Request) {
+func (ss *SessionStore) New() *Session {
 	sid := randomN(sessionIDLen)
-	ss.sessions.Store(sid, &Session{
+	return &Session{
 		sid:  sid,
 		ts:   time.Now(),
 		data: url.Values{},
-	})
+	}
+}
+
+func (ss *SessionStore) Get(r *http.Request) (*Session, bool) {
+	c := GetCookie(r, ss.sessCookID)
+	if c == nil {
+		return nil, false
+	}
+	v, ok := ss.sessions.Load(c.Value)
+	return v.(*Session), ok
+}
+
+func (ss *SessionStore) Save(w http.ResponseWriter, s *Session) {
+	c := NewCookie(w, ss.sessCookID, s.sid,
+		s.ts.Add(time.Duration(ss.rateInSeconds)*time.Second),
+		int(ss.rateInSeconds))
+	ss.sessions.Store(s.sid, s)
+	http.SetCookie(w, c)
+}
+
+func (ss *SessionStore) NewSession(w http.ResponseWriter, r *http.Request) {
+	sid := randomN(sessionIDLen)
+	s := &Session{
+		sid:  sid,
+		ts:   time.Now(),
+		data: url.Values{},
+	}
+	ss.sessions.Store(sid, s)
 	c := NewCookie(w, ss.sessCookID, sid,
-		time.Now().Add(time.Duration(ss.rateInSeconds)*time.Second),
+		s.ts.Add(time.Duration(ss.rateInSeconds)*time.Second),
 		int(ss.rateInSeconds))
 	http.SetCookie(w, c)
 }
