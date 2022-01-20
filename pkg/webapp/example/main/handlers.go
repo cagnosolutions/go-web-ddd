@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/cagnosolutions/go-web-ddd/pkg/webapp"
-	"github.com/cagnosolutions/go-web-ddd/pkg/webapp/example/user"
 	"log"
 	"net/http"
 )
@@ -15,68 +14,52 @@ func handleIndex(t *webapp.TemplateCache) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func handleLogin(t *webapp.TemplateCache, ss *webapp.CookieStore, us *user.UserService) http.Handler {
+func handleLogin(t *webapp.TemplateCache, ss *webapp.SessionStore, ba *webapp.BasicAuthUser) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf(">>> form: %+v\n", r.Form)
 		switch r.Method {
 		case http.MethodGet:
-			handleLoginGet(t).ServeHTTP(w, r)
+			t.ExecuteTemplate(w, "login.html", map[string]interface{}{})
+			return
 		case http.MethodPost:
-			handleLoginPost(ss, us).ServeHTTP(w, r)
-		}
-	}
-	return http.HandlerFunc(fn)
-}
-
-func handleLoginGet(t *webapp.TemplateCache) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println(">>> [GET] >>> LOGIN")
-		t.ExecuteTemplate(w, "login.html", map[string]interface{}{})
-	}
-	return http.HandlerFunc(fn)
-}
-
-func handleLoginPost(ss *webapp.CookieStore, us *user.UserService) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		err := r.ParseForm()
-		if err != nil {
-			log.Fatal(err)
-		}
-		user := r.Form.Get("username")
-		pass := r.Form.Get("password")
-		u := us.GetUser(user, pass)
-		if u == nil {
-			fmt.Println("no user found")
-		}
-		/*
-			if u == "admin" && p == "admin" {
-				ss.NewSession(w, r)
-				http.Redirect(w, r, "/secure/home", http.StatusTemporaryRedirect)
+			err := r.ParseForm()
+			if err != nil {
+				log.Fatal(err)
+			}
+			user := r.Form.Get("username")
+			pass := r.Form.Get("password")
+			su, authd := ba.Authenticate(user, pass)
+			if !authd {
+				t.ExecuteTemplate(w, "login.html", map[string]interface{}{})
 				return
 			}
-			http.Redirect(w, r, "/login?error=invalid", http.StatusTemporaryRedirect)
+			sess := ss.New()
+			sess.Set("user", su)
+			ss.Save(w, r, sess)
+			http.Redirect(w, r, "/secure/home", http.StatusTemporaryRedirect)
 			return
-		*/
+		}
 	}
 	return http.HandlerFunc(fn)
 }
 
-func handleSecureHome(ss *webapp.CookieStore) http.Handler {
+func handleSecureHome(ss *webapp.SessionStore) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		_, ok := ss.CurrentUser(r)
+		sess, ok := ss.Get(r)
 		if !ok {
-			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			http.Redirect(w, r, "/error/401", http.StatusTemporaryRedirect)
 			return
 		}
-		fmt.Fprintf(w, "this is my secure home")
+		usr, _ := sess.Get("user")
+		ss.Save(w, r, sess)
+		fmt.Fprintf(w, "this is my secure home (session.id=%s, role=%s)\n", sess.ID(), usr)
 		return
 	}
 	return http.HandlerFunc(fn)
 }
 
-func handleLogout(ss *webapp.CookieStore) http.Handler {
+func handleLogout(ss *webapp.SessionStore) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		ss.EndSession(w, r)
+		ss.Save(w, r, nil)
 		http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 	}
 	return http.HandlerFunc(fn)

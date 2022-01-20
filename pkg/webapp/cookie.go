@@ -34,7 +34,7 @@ func URLDecode(s string) string {
 	return us
 }
 
-func NewCookie(w http.ResponseWriter, name, value string, expires time.Time, maxAge int) *http.Cookie {
+func NewCookie(name, value string, expires time.Time, maxAge int) *http.Cookie {
 	return &http.Cookie{
 		Name:       URLEncode(name),
 		Value:      Base64Encode(value),
@@ -61,12 +61,12 @@ func GetCookie(r *http.Request, name string) *http.Cookie {
 }
 
 func SetCookie(w http.ResponseWriter, name, value string) {
-	c := NewCookie(w, name, value, time.Now().Add(defaultSessionInMinutes*time.Minute), 0)
+	c := NewCookie(name, value, time.Now().Add(defaultSessionInMinutes*time.Minute), 0)
 	http.SetCookie(w, c)
 }
 
 func DelCookie(w http.ResponseWriter, name string) {
-	c := NewCookie(w, name, "", time.Now(), 0)
+	c := NewCookie(name, "", time.Now(), 0)
 	c.MaxAge = -1
 	http.SetCookie(w, c)
 }

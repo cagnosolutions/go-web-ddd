@@ -1,18 +1,17 @@
 package main
 
 import (
+	"fmt"
 	"github.com/cagnosolutions/go-web-ddd/pkg/webapp"
 	"github.com/cagnosolutions/go-web-ddd/pkg/webapp/example/user"
-	"github.com/cagnosolutions/go-web-ddd/pkg/webapp/memory"
 	"log"
 	"net/http"
 )
 
 var (
-	tc  *webapp.TemplateCache
-	ss  *webapp.CookieStore
-	db  webapp.DataAccesser
-	usr *user.WiredUser
+	tc *webapp.TemplateCache
+	ss *webapp.SessionStore
+	ba *webapp.BasicAuthUser
 )
 
 func init() {
@@ -23,19 +22,9 @@ func init() {
 	// init session store
 	ss = webapp.NewSessionStore("sess-id", 300)
 
-	// init in memory db
-	db = memory.NewMemoryDataSource()
-
-	// wire up user
-	usr = user.WireUser(db)
-	usr.UserRepository.AddUser(&user.User{
-		ID:           0,
-		FirstName:    "Jon",
-		LastName:     "Doe",
-		EmailAddress: "jdoe@example.com",
-		Password:     "jdoe007ok",
-		IsActive:     true,
-	})
+	// init basic auth user
+	ba = webapp.NewBasicAuthUser()
+	ba.Register("jdoe@example.com", "awesome007", "user")
 }
 
 func main() {
@@ -44,14 +33,48 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/error/", webapp.ErrorHandler(tc.Lookup("error.html")))
 	mux.Handle("/index", handleIndex(tc))
-	mux.Handle("/login", handleLogin(tc, ss, usr.UserService))
+	mux.Handle("/login", handleLogin(tc, ss, ba))
 	mux.Handle("/logout", handleLogout(ss))
+	mux.Handle("/sessions", handleSessions(ss))
 	mux.Handle("/secure/home", handleSecureHome(ss))
 	mux.Handle("/templates", handleTemplates(tc))
 	mux.Handle("/bootstrap", handleBootstrapExample())
 	mux.Handle("/static/", webapp.StaticHandler("/static", "pkg/webapp/example/main/web/static/"))
 	log.Fatal(http.ListenAndServe(":8080", mux))
 
+}
+
+func handleSessions(ss *webapp.SessionStore) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		v := r.URL.Query().Get("sess")
+		if v == "new" {
+			s := ss.New()
+			s.Set("counter", 0)
+			ss.Save(w, r, s)
+			fmt.Fprintf(w, "got new session (and saved): %s\n", s.ID())
+			return
+		}
+		if v == "get" {
+			s, ok := ss.Get(r)
+			if !ok {
+				fmt.Fprintf(w, "tried to get session but didnt find any")
+				return
+			}
+			c, _ := s.Get("counter")
+			s.Set("counter", c.(int)+1)
+			ss.Save(w, r, s)
+			fmt.Fprintf(w, "got session, count=%d (%d seconds until expire) \n", c, s.ExpiresIn())
+			return
+		}
+		if v == "del" {
+			ss.Save(w, r, nil)
+			fmt.Fprintf(w, "removed session\n")
+			return
+		}
+		fmt.Fprintf(w, "sessions: %s\n", ss.String())
+		return
+	}
+	return http.HandlerFunc(fn)
 }
 
 func loadUser(dao webapp.DataAccesser) (string, http.Handler) {

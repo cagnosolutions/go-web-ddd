@@ -1,179 +1,174 @@
 package webapp
 
 import (
+	"errors"
 	"math/rand"
 	"net/http"
-	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
 
+var ErrNilSession = errors.New("session is nil, or not found")
+
 type AuthUser interface {
-	Authenticate(username, password string) bool
+	Register(username, password, role string)
+	Authenticate(username, password string) (*SystemUser, bool)
+}
+
+type SystemUser struct {
+	Username string
+	Password string
+	Role     string
+}
+
+type BasicAuthUser struct {
+	users *sync.Map
+}
+
+func NewBasicAuthUser() *BasicAuthUser {
+	return &BasicAuthUser{
+		users: new(sync.Map),
+	}
+}
+
+func (a *BasicAuthUser) Register(username, password, role string) {
+	a.users.Store(username, &SystemUser{
+		Username: username,
+		Password: password,
+		Role:     role,
+	})
+}
+
+func (a *BasicAuthUser) Authenticate(username, password string) (*SystemUser, bool) {
+	su, ok := a.users.Load(username)
+	if !ok {
+		return nil, false
+	}
+	if su.(*SystemUser).Password != password {
+		return nil, false
+	}
+	return su.(*SystemUser), true
 }
 
 const sessionIDLen = 32
 
 type Session struct {
-	sid  string
-	ts   time.Time
-	data url.Values
+	id      string
+	data    map[string]interface{}
+	expires time.Time
 }
 
 func (s *Session) ID() string {
-	return s.sid
+	return s.id
 }
 
-func (s *Session) Has(key string) bool {
-	return s.data.Has(key)
+func (s *Session) Has(k string) bool {
+	_, ok := s.data[k]
+	return ok
 }
 
-func (s *Session) Set(key string, val string) {
-	s.data.Set(key, val)
+func (s *Session) Set(k string, val interface{}) {
+	s.data[k] = val
 }
 
-func (s *Session) Get(key string) string {
-	return s.data.Get(key)
+func (s *Session) Get(k string) (interface{}, bool) {
+	v, ok := s.data[k]
+	return v, ok
 }
 
-func (s *Session) Del(key string) {
-	s.data.Del(key)
+func (s *Session) Del(k string) {
+	delete(s.data, k)
 }
 
-func (ss *CookieStore) Secure(role string, h http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		if u, ok := ss.CurrentUser(r); !ok || !u.Has(role) {
-			http.NotFound(w, r)
-			return
-		}
-		h.ServeHTTP(w, r)
-	}
-	return http.HandlerFunc(fn)
+func (s *Session) ExpiresIn() int64 {
+	return s.expires.Unix() - time.Now().Unix()
 }
 
-type SessionStore interface {
+type SessionStorer interface {
 	// New should create and return a new session
-	New(r http.Request, name string) *Session
+	New() *Session
 
 	// Get should return a cached session
-	Get(r http.Request, name string) (*Session, error)
+	Get(r *http.Request) (*Session, bool)
 
-	// Save should persist session to the
-	// underlying store implementation
-	Save(w http.ResponseWriter, r *http.Request, s *Session) error
+	// Save should persist session to the underlying store
+	// implementation. Passing a nil session erases it.
+	Save(w http.ResponseWriter, r *http.Request, s *Session)
 }
 
-type CookieStore struct {
-	sessCookID    string
-	rateInSeconds int64
-	sessions      *sync.Map
+type SessionStore struct {
+	sid      string // sid is the store id
+	rate     int64  // rate is the max idle session time in seconds
+	sessions *sync.Map
 }
 
-func NewSessionStore(sessCookID string, rateInSeconds int64) *CookieStore {
-	ss := &CookieStore{
-		sessCookID:    sessCookID,
-		rateInSeconds: rateInSeconds,
-		sessions:      new(sync.Map),
+func NewSessionStore(sid string, rate int64) *SessionStore {
+	ss := &SessionStore{
+		sid:      sid,
+		rate:     rate,
+		sessions: new(sync.Map),
 	}
 	go ss.gc()
 	return ss
 }
 
-func (ss *CookieStore) New() *Session {
-	sid := randomN(sessionIDLen)
+// New creates and returns a new session
+func (ss *SessionStore) New() *Session {
 	return &Session{
-		sid:  sid,
-		ts:   time.Now(),
-		data: url.Values{},
+		id:      randomN(sessionIDLen),
+		data:    make(map[string]interface{}),
+		expires: time.Now().Add(time.Duration(ss.rate) * time.Second),
 	}
 }
 
-func (ss *CookieStore) Get(r *http.Request) (*Session, bool) {
-	c := GetCookie(r, ss.sessCookID)
+// Get returns a cached session (if one exists)
+func (ss *SessionStore) Get(r *http.Request) (*Session, bool) {
+	c := GetCookie(r, ss.sid)
 	if c == nil {
 		return nil, false
 	}
 	v, ok := ss.sessions.Load(c.Value)
-	return v.(*Session), ok
-}
-
-func (ss *CookieStore) Save(w http.ResponseWriter, s *Session) {
-	c := NewCookie(w, ss.sessCookID, s.sid,
-		s.ts.Add(time.Duration(ss.rateInSeconds)*time.Second),
-		int(ss.rateInSeconds))
-	ss.sessions.Store(s.sid, s)
-	http.SetCookie(w, c)
-}
-
-func (ss *CookieStore) NewSession(w http.ResponseWriter, r *http.Request) {
-	sid := randomN(sessionIDLen)
-	s := &Session{
-		sid:  sid,
-		ts:   time.Now(),
-		data: url.Values{},
-	}
-	ss.sessions.Store(sid, s)
-	c := NewCookie(w, ss.sessCookID, sid,
-		s.ts.Add(time.Duration(ss.rateInSeconds)*time.Second),
-		int(ss.rateInSeconds))
-	http.SetCookie(w, c)
-}
-
-func (ss *CookieStore) GetSession(w http.ResponseWriter, r *http.Request) *Session {
-	c := GetCookie(r, ss.sessCookID)
-	if c == nil {
-		ss.NewSession(w, r)
-		c = GetCookie(r, ss.sessCookID)
-	}
-	v, _ := ss.sessions.Load(c.Value)
-	return v.(*Session)
-}
-
-func (ss *CookieStore) UpdateSession(w http.ResponseWriter, r *http.Request) {
-	c := GetCookie(r, ss.sessCookID)
-	if c == nil {
-		return
-	}
-	v, ok := ss.sessions.Load(c.Value)
-	if ok {
-		currentTime := time.Now()
-		v.(*Session).ts = currentTime
-		c = NewCookie(w, ss.sessCookID, c.Value,
-			currentTime.Add(time.Duration(ss.rateInSeconds)*time.Second),
-			int(ss.rateInSeconds))
-		http.SetCookie(w, c)
-	}
-}
-
-func (ss *CookieStore) EndSession(w http.ResponseWriter, r *http.Request) {
-	c := GetCookie(r, ss.sessCookID)
-	if c == nil {
-		return
-	}
-	ss.sessions.Delete(c.Value)
-	c = NewCookie(w, ss.sessCookID, c.Value, time.Now(), -1)
-	http.SetCookie(w, c)
-}
-
-func (ss *CookieStore) CurrentUser(r *http.Request) (*Session, bool) {
-	c := GetCookie(r, ss.sessCookID)
-	if c == nil {
+	if !ok {
 		return nil, false
 	}
-	v, _ := ss.sessions.Load(c.Value)
 	return v.(*Session), true
 }
 
-func (ss *CookieStore) gc() {
-	ss.sessions.Range(func(sid, sess interface{}) bool {
-		if (sess.(*Session).ts.Unix() + ss.rateInSeconds) < time.Now().Unix() {
-			ss.sessions.Delete(sid)
+// Save persists the provided session. If you would like to remove a session, simply
+// pass it a nil session, and it will time the cookie out.
+func (ss *SessionStore) Save(w http.ResponseWriter, r *http.Request, s *Session) {
+	if s == nil {
+		c := GetCookie(r, ss.sid)
+		if c == nil {
+			return
+		}
+		ss.sessions.Delete(c.Value)
+		http.SetCookie(w, NewCookie(ss.sid, c.Value, time.Now(), -1))
+		return
+	}
+	s.expires = time.Now().Add(time.Duration(ss.rate) * time.Second)
+	ss.sessions.Store(s.id, s)
+	http.SetCookie(w, NewCookie(ss.sid, s.id, s.expires, int(ss.rate)))
+}
+
+func (ss *SessionStore) String() string {
+	var sessions []string
+	ss.sessions.Range(func(id, sess interface{}) bool {
+		sessions = append(sessions, id.(string))
+		return true
+	})
+	return strings.Join(sessions, "\n")
+}
+
+func (ss *SessionStore) gc() {
+	ss.sessions.Range(func(id, sess interface{}) bool {
+		if sess.(*Session).ExpiresIn() < 0 {
+			ss.sessions.Delete(id)
 		}
 		return true
 	})
-	time.AfterFunc(time.Duration(ss.rateInSeconds)*time.Second, func() {
-		ss.gc()
-	})
+	time.AfterFunc(time.Duration(ss.rate/2)*time.Second, func() { ss.gc() })
 }
 
 const (
