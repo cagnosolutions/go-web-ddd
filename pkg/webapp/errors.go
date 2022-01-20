@@ -22,11 +22,13 @@ func ErrorHandler(errTmpl *template.Template) http.Handler {
 				return
 			}
 			err = errTmpl.Execute(w, struct {
-				ErrorCode int
-				ErrorText string
+				ErrorCode     int
+				ErrorText     string
+				ErrorTextLong string
 			}{
-				ErrorCode: code,
-				ErrorText: http.StatusText(code),
+				ErrorCode:     code,
+				ErrorText:     http.StatusText(code),
+				ErrorTextLong: HTTPCodesLongFormat[code],
 			})
 			if err != nil {
 				code := http.StatusExpectationFailed
