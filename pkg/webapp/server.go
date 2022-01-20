@@ -45,7 +45,7 @@ func NewApplication(conf *ApplicationConfig) *Application {
 	checkConf(conf)
 	return &Application{
 		conf: conf,
-		auth: NewBasicAuthUser(),
+		auth: conf.BasicAuthUser,
 		sess: NewSessionStore(conf.SessionConfig),
 		tmpl: NewTemplateCache(conf.TemplateConfig),
 		serv: NewWebServer(conf.WebServerConfig),
