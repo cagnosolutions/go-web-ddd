@@ -6,6 +6,7 @@ import (
 	"github.com/cagnosolutions/go-web-ddd/pkg/webapp/example/user"
 	"log"
 	"net/http"
+	"time"
 )
 
 var (
@@ -20,7 +21,10 @@ func init() {
 	tc.ParseGlob("pkg/webapp/example/main/web/templates/stubs/*.html")
 
 	// init session store
-	ss = webapp.NewSessionStore("sess-id", 300)
+	ss = webapp.NewSessionStore(&webapp.SessionConfig{
+		SessionID: "sess-id",
+		Timeout:   time.Duration(30) * time.Second,
+	})
 
 	// init basic auth user
 	ba = webapp.NewBasicAuthUser()

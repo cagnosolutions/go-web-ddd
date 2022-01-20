@@ -5,9 +5,9 @@ import (
 )
 
 type ApplicationConfig struct {
-	SessionID string
-	Addr      string
-	Handler   http.Handler
+	*SessionConfig
+	Addr    string
+	Handler http.Handler
 }
 
 func checkConf(conf *ApplicationConfig) {
@@ -25,7 +25,7 @@ func NewApplication(conf *ApplicationConfig) *Application {
 	checkConf(conf)
 	return &Application{
 		conf: conf,
-		sess: NewSessionStore(conf.SessionID, 900),
+		sess: NewSessionStore(conf.SessionConfig),
 		auth: NewBasicAuthUser(),
 		serv: &http.Server{
 			Addr:    conf.Addr,
