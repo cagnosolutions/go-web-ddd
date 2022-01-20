@@ -6,6 +6,11 @@ import (
 	"os"
 )
 
+type Model struct {
+	Data interface{}
+	CSRF string
+}
+
 type TemplateCache struct {
 	FuncMap       template.FuncMap
 	t             *template.Template
@@ -39,12 +44,10 @@ func (tc *TemplateCache) ParseGlob(pattern string) {
 
 func (tc *TemplateCache) ExecuteTemplate(w http.ResponseWriter, name string, data interface{}) {
 	w.Header().Set("content-type", "text/html; charset=utf-8")
-	err := tc.t.ExecuteTemplate(w, name, data)
+	err := tc.t.ExecuteTemplate(w, name, Model{Data: data})
 	if err != nil {
-		//fmt.Printf("error: %s\n", err)
 		//code := http.StatusExpectationFailed
 		//http.Error(w, http.StatusText(code), code)
-
 		http.RedirectHandler("/error/417", http.StatusTemporaryRedirect)
 		return
 	}
