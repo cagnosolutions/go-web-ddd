@@ -2,10 +2,12 @@ package webapp
 
 import (
 	"fmt"
+	"html/template"
 	"mime"
 	"net/http"
 	"runtime/debug"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -33,47 +35,80 @@ func (m muxEntry) String() string {
 	return fmt.Sprintf("[%s]&nbsp;%s", m.method, m.pattern)
 }
 
-func (s *ServeMux) Len() int {
+func (s *Muxer) Len() int {
 	return len(s.es)
 }
 
-func (s *ServeMux) Less(i, j int) bool {
+func (s *Muxer) Less(i, j int) bool {
 	return s.es[i].pattern < s.es[j].pattern
 }
 
-func (s *ServeMux) Swap(i, j int) {
+func (s *Muxer) Swap(i, j int) {
 	s.es[j], s.es[i] = s.es[i], s.es[j]
 }
 
-func (s *ServeMux) Search(x string) int {
+func (s *Muxer) Search(x string) int {
 	return sort.Search(len(s.es), func(i int) bool {
 		return s.es[i].pattern >= x
 	})
 }
 
-type ServeMux struct {
+type MuxerConfig struct {
+	StaticFiles http.Handler
+	ErrHandler  http.Handler
+	MetricsOn   bool
+	Logging     int
+}
+
+var defaultMuxerConfig = &MuxerConfig{
+	StaticFiles: StaticFileHandler("/static/", "/static", "web/static/"),
+	ErrHandler:  ErrorHandler(nil),
+	MetricsOn:   false,
+	Logging:     LevelInfo,
+}
+
+func StaticFileHandler(pattern, prefix, path string) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		http.Handle(pattern,
+			http.StripPrefix(prefix,
+				http.FileServer(http.Dir(path))))
+	}
+	return http.HandlerFunc(fn)
+}
+
+func checkMuxerConfig(conf *MuxerConfig) {
+	if conf == nil {
+		conf = defaultMuxerConfig
+	}
+}
+
+type Muxer struct {
 	lock        sync.Mutex
+	conf        *MuxerConfig
 	logger      *Logger
 	withLogging bool
 	em          map[string]muxEntry
 	es          []muxEntry
 }
 
-func NewServeMux(logger *Logger) *ServeMux {
-	mux := &ServeMux{
-		em: make(map[string]muxEntry),
-		es: make([]muxEntry, 0),
+func NewMuxer(conf *MuxerConfig) *Muxer {
+	checkMuxerConfig(conf)
+	mux := &Muxer{
+		conf: conf,
+		em:   make(map[string]muxEntry),
+		es:   make([]muxEntry, 0),
 	}
-	if logger != nil {
-		mux.logger = logger
+	if conf.Logging < LevelOff {
+		mux.logger = NewLogger(conf.Logging)
 		mux.withLogging = true
 	}
-	mux.Get("/favicon.ico", http.NotFoundHandler())
-	mux.Get("/info", mux.info())
+	if conf.MetricsOn {
+		mux.Get("/api/metrics", mux.info())
+	}
 	return mux
 }
 
-func (s *ServeMux) Handle(method string, pattern string, handler http.Handler) {
+func (s *Muxer) Handle(method string, pattern string, handler http.Handler) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if pattern == "" {
@@ -112,39 +147,39 @@ func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
 	return es
 }
 
-func (s *ServeMux) HandleFunc(method, pattern string, handler func(http.ResponseWriter, *http.Request)) {
+func (s *Muxer) HandleFunc(method, pattern string, handler func(http.ResponseWriter, *http.Request)) {
 	if handler == nil {
 		panic("http: nil handler")
 	}
 	s.Handle(method, pattern, http.HandlerFunc(handler))
 }
 
-func (s *ServeMux) Forward(oldpattern string, newpattern string) {
+func (s *Muxer) Forward(oldpattern string, newpattern string) {
 	s.Handle(http.MethodGet, oldpattern, http.RedirectHandler(newpattern, http.StatusTemporaryRedirect))
 }
 
-func (s *ServeMux) Get(pattern string, handler http.Handler) {
+func (s *Muxer) Get(pattern string, handler http.Handler) {
 	s.Handle(http.MethodGet, pattern, handler)
 }
 
-func (s *ServeMux) Post(pattern string, handler http.Handler) {
+func (s *Muxer) Post(pattern string, handler http.Handler) {
 	s.Handle(http.MethodPost, pattern, handler)
 }
 
-func (s *ServeMux) Put(pattern string, handler http.Handler) {
+func (s *Muxer) Put(pattern string, handler http.Handler) {
 	s.Handle(http.MethodPut, pattern, handler)
 }
 
-func (s *ServeMux) Delete(pattern string, handler http.Handler) {
+func (s *Muxer) Delete(pattern string, handler http.Handler) {
 	s.Handle(http.MethodDelete, pattern, handler)
 }
 
-func (s *ServeMux) Static(pattern string, path string) {
+func (s *Muxer) Static(pattern string, path string) {
 	staticHandler := http.StripPrefix(pattern, http.FileServer(http.Dir(path)))
 	s.Handle(http.MethodGet, pattern, staticHandler)
 }
 
-func (s *ServeMux) getEntries() []string {
+func (s *Muxer) getEntries() []string {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	var entries []string
@@ -154,7 +189,7 @@ func (s *ServeMux) getEntries() []string {
 	return entries
 }
 
-func (s *ServeMux) match(path string) (string, string, http.Handler) {
+func (s *Muxer) match(path string) (string, string, http.Handler) {
 	e, ok := s.em[path]
 	if ok {
 		return e.method, e.pattern, e.handler
@@ -167,7 +202,7 @@ func (s *ServeMux) match(path string) (string, string, http.Handler) {
 	return "", "", nil
 }
 
-func (s *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *Muxer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	m, _, h := s.match(r.URL.Path)
 	if m != r.Method || h == nil {
 		h = http.NotFoundHandler()
@@ -179,7 +214,7 @@ func (s *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.ServeHTTP(w, r)
 }
 
-func (s *ServeMux) info() http.Handler {
+func (s *Muxer) info() http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		var data []string
 		data = append(data, fmt.Sprintf("<h3>Registered Routes (%d)</h3>", len(s.em)))
@@ -201,11 +236,11 @@ func (s *ServeMux) info() http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func (s *ServeMux) ContentType(w http.ResponseWriter, content string) {
+func (s *Muxer) ContentType(w http.ResponseWriter, content string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	ct := mime.TypeByExtension(content)
-	if ct == "" {
+	if ct == "" && s.withLogging {
 		s.logger.Error("Error, incompatible content type!\n")
 		return
 	}
@@ -238,7 +273,7 @@ func (w *loggingResponseWriter) WriteHeader(statusCode int) {
 	w.data.status = statusCode
 }
 
-func (s *ServeMux) requestLogger(next http.Handler) http.Handler {
+func (s *Muxer) requestLogger(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
@@ -276,4 +311,40 @@ func logStr(code int, r *http.Request) (string, []interface{}) {
 		code,
 		r.ContentLength,
 	}
+}
+
+func StaticHandler(prefix, path string) http.Handler {
+	return http.StripPrefix(prefix, http.FileServer(http.Dir(path)))
+}
+
+func ErrorHandler(errTmpl *template.Template) http.Handler {
+	if errTmpl == nil {
+		errTmpl = defaultErrTmpl
+	}
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		p := NewPath(r.URL.Path)
+		if p.HasID() {
+			code, err := strconv.Atoi(p.ID)
+			if err != nil {
+				code := http.StatusExpectationFailed
+				http.Error(w, http.StatusText(code), code)
+				return
+			}
+			err = errTmpl.Execute(w, struct {
+				ErrorCode     int
+				ErrorText     string
+				ErrorTextLong string
+			}{
+				ErrorCode:     code,
+				ErrorText:     http.StatusText(code),
+				ErrorTextLong: HTTPCodesLongFormat[code],
+			})
+			if err != nil {
+				code := http.StatusExpectationFailed
+				http.Error(w, http.StatusText(code), code)
+				return
+			}
+		}
+	}
+	return http.HandlerFunc(fn)
 }
