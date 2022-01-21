@@ -34,11 +34,40 @@ func init() {
 	ba.Register("jdoe@example.com", "awesome007", "user")
 }
 
+func initWebApp() {
+
+	// basic config
+	config := &webapp.WebAppConfig{
+		Templates: nil,
+		Sessions:  nil,
+		Muxer: &webapp.MuxerConfig{
+			StaticHandler: webapp.DefaultMuxerStaticHandler("pkg/webapp/example/main/web/static/"),
+			ErrHandler:    webapp.DefaultMuxerErrorHandler(),
+			MetricsOn:     true,
+			Logging:       webapp.LevelInfo,
+		},
+		Server:             nil,
+		AppName:            "my-demo-app",
+		GracefulShutdownOn: true,
+	}
+	// init new webapp "object"
+	app := webapp.NewWebApp(config)
+
+	// register some routes
+	app.Muxer.Get("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "this is the root")
+		return
+	}))
+
+	// serve it up
+	log.Panic(http.ListenAndServe(":8181", app))
+}
+
 func main() {
 
 	// server
 	mux := http.NewServeMux()
-	mux.Handle("/error/", webapp.ErrorHandler(tc.Lookup("error.html")))
+	mux.Handle("/error/", webapp.DefaultMuxerErrorHandler())
 	mux.Handle("/index", handleIndex(tc))
 	mux.Handle("/login", handleLogin(tc, ss, ba))
 	mux.Handle("/logout", handleLogout(ss))

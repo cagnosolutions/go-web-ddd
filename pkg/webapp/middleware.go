@@ -1,7 +1,6 @@
 package webapp
 
 import (
-	"html/template"
 	"net/http"
 )
 
@@ -11,8 +10,6 @@ func AuthHandler(dao DataAccesser) http.Handler {
 	}
 	return http.HandlerFunc(fn)
 }
-
-var defaultErrTmpl = template.Must(template.New("error").Parse(`THIS IS THE DEFAULT ERROR TEMPLATE`))
 
 // Middleware is a piece of middleware.
 type Middleware func(http.Handler) http.Handler
