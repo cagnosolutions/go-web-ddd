@@ -12,7 +12,7 @@ type WebAppConfig struct {
 }
 
 type WebApp struct {
-	*SystemSessionUser
+	AuthUser
 	*WebAppConfig
 	*TemplateCache
 	*SessionStore
@@ -38,7 +38,7 @@ func NewWebApp(conf *WebAppConfig) *WebApp {
 	}
 	if conf.Sessions != nil {
 		app.SessionStore = NewSessionStore(conf.Sessions)
-		app.SystemSessionUser = NewSystemSessionUser()
+		app.AuthUser = NewSystemSessionUser()
 	}
 	if conf.Muxer != nil {
 		app.Muxer = NewMuxer(conf.Muxer)
@@ -72,7 +72,7 @@ func (app *WebApp) handleLogin() http.Handler {
 			un := r.FormValue("username")
 			pw := r.FormValue("password")
 			// attempt to authenticate
-			user, ok := app.SystemSessionUser.Authenticate(un, pw)
+			user, ok := app.AuthUser.Authenticate(un, pw)
 			if !ok {
 				// if authentication failed call onFailure
 				app.onFailure.ServeHTTP(w, r)
@@ -91,4 +91,32 @@ func (app *WebApp) handleLogin() http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-///
+func (app *WebApp) LoginHandler(onSuccess http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		// reject non-post login calls
+		if r.Method != http.MethodPost {
+			code := http.StatusMethodNotAllowed
+			http.Error(w, http.StatusText(code), code)
+			return
+		}
+		// get posted form values
+		un := r.FormValue("username")
+		pw := r.FormValue("password")
+		// attempt to authenticate
+		user, ok := app.AuthUser.Authenticate(un, pw)
+		if !ok {
+			code := http.StatusUnauthorized
+			http.Error(w, http.StatusText(code), code)
+			return
+		}
+		// otherwise, start a new session
+		sess := app.SessionStore.New()
+		sess.Set("role", user.Role)
+		sess.Set("username", user.Username)
+		app.SessionStore.Save(w, r, sess)
+		// call onSuccess
+		onSuccess.ServeHTTP(w, r)
+		return
+	}
+	return http.HandlerFunc(fn)
+}
