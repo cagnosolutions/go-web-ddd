@@ -12,7 +12,7 @@ import (
 var (
 	tc *webapp.TemplateCache
 	ss *webapp.SessionStore
-	ba *webapp.BasicAuthUser
+	ba *webapp.SystemSessionUser
 )
 
 func init() {

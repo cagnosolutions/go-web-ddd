@@ -14,7 +14,7 @@ func handleIndex(t *webapp.TemplateCache) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func handleLogin(t *webapp.TemplateCache, ss *webapp.SessionStore, ba *webapp.BasicAuthUser) http.Handler {
+func handleLogin(t *webapp.TemplateCache, ss *webapp.SessionStore, ba *webapp.SystemSessionUser) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:

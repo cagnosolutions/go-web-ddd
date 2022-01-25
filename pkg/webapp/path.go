@@ -6,12 +6,12 @@ import (
 
 const pathSeperator = "/"
 
-type path struct {
+type Path struct {
 	Path string
 	ID   string
 }
 
-func NewPath(p string) *path {
+func NewPath(p string) *Path {
 	var id string
 	p = strings.Trim(p, pathSeperator)
 	s := strings.Split(p, pathSeperator)
@@ -19,12 +19,12 @@ func NewPath(p string) *path {
 		id = s[len(s)-1]
 		p = strings.Join(s[:len(s)-1], pathSeperator)
 	}
-	return &path{
+	return &Path{
 		Path: p,
 		ID:   id,
 	}
 }
 
-func (p *path) HasID() bool {
+func (p *Path) HasID() bool {
 	return len(p.ID) > 0
 }

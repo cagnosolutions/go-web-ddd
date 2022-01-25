@@ -13,17 +13,17 @@ type SystemUser struct {
 	Role     string
 }
 
-type BasicAuthUser struct {
+type SystemSessionUser struct {
 	users *sync.Map
 }
 
-func NewBasicAuthUser() *BasicAuthUser {
-	return &BasicAuthUser{
+func NewSystemSessionUser() *SystemSessionUser {
+	return &SystemSessionUser{
 		users: new(sync.Map),
 	}
 }
 
-func (a *BasicAuthUser) Register(username, password, role string) {
+func (a *SystemSessionUser) Register(username, password, role string) {
 	a.users.Store(username, &SystemUser{
 		Username: username,
 		Password: password,
@@ -31,7 +31,7 @@ func (a *BasicAuthUser) Register(username, password, role string) {
 	})
 }
 
-func (a *BasicAuthUser) Authenticate(username, password string) (*SystemUser, bool) {
+func (a *SystemSessionUser) Authenticate(username, password string) (*SystemUser, bool) {
 	su, ok := a.users.Load(username)
 	if !ok {
 		return nil, false

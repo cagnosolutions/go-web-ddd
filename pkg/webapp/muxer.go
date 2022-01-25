@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"mime"
 	"net/http"
+	"path"
 	"runtime/debug"
 	"sort"
 	"strconv"
@@ -74,12 +75,34 @@ func checkMuxerConfig(conf *MuxerConfig) {
 }
 
 type Muxer struct {
-	lock        sync.Mutex
 	conf        *MuxerConfig
-	logger      *Logger
-	withLogging bool
+	lock        sync.RWMutex
 	em          map[string]muxEntry
 	es          []muxEntry
+	logger      *Logger
+	withLogging bool
+}
+
+// cleanPath returns the canonical path for p, eliminating . and .. elements
+func cleanPath(p string) string {
+	if p == "" {
+		return "/"
+	}
+	if p[0] != '/' {
+		p = "/" + p
+	}
+	np := path.Clean(p)
+	// path.Clean removes trailing slash except for root;
+	// put the trailing slash back if necessary.
+	if p[len(p)-1] == '/' && np != "/" {
+		// Fast path for common case of p being the string we want:
+		if len(p) == len(np)+1 && strings.HasPrefix(p, np) {
+			np = p
+		} else {
+			np += "/"
+		}
+	}
+	return np
 }
 
 func NewMuxer(conf *MuxerConfig) *Muxer {
@@ -108,6 +131,7 @@ func NewMuxer(conf *MuxerConfig) *Muxer {
 func (s *Muxer) Handle(method string, pattern string, handler http.Handler) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+
 	if pattern == "" {
 		panic("http: invalid pattern")
 	}
@@ -126,7 +150,6 @@ func (s *Muxer) Handle(method string, pattern string, handler http.Handler) {
 	if pattern[len(pattern)-1] == '/' {
 		s.es = appendSorted(s.es, entry)
 	}
-	//s.routes.Put(entry)
 }
 
 func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
@@ -176,6 +199,10 @@ func (s *Muxer) Static(pattern string, path string) {
 	s.Handle(http.MethodGet, pattern, staticHandler)
 }
 
+func (s *Muxer) GetEntries() []string {
+	return s.getEntries()
+}
+
 func (s *Muxer) getEntries() []string {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -186,11 +213,17 @@ func (s *Muxer) getEntries() []string {
 	return entries
 }
 
+// match attempts to locate a handler on a handler map given a
+// path string; most-specific (longest) pattern wins
 func (s *Muxer) match(path string) (string, string, http.Handler) {
+	// first, check for exact match
 	e, ok := s.em[path]
 	if ok {
 		return e.method, e.pattern, e.handler
 	}
+	// then, check for longest valid match. mux.es
+	// contains all patterns that end in "/" sorted
+	// from longest to shortest
 	for _, e = range s.es {
 		if strings.HasPrefix(path, e.pattern) {
 			return e.method, e.pattern, e.handler
@@ -200,8 +233,21 @@ func (s *Muxer) match(path string) (string, string, http.Handler) {
 }
 
 func (s *Muxer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.RequestURI == "*" {
+		if r.ProtoAtLeast(1, 1) {
+			w.Header().Set("Connection", "close")
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	m, _, h := s.match(r.URL.Path)
-	if m != r.Method || h == nil {
+	if m != r.Method {
+		h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			code := http.StatusMethodNotAllowed
+			http.Error(w, http.StatusText(code), code)
+		})
+	}
+	if h == nil {
 		h = http.NotFoundHandler()
 	}
 	if s.withLogging {

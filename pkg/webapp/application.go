@@ -24,14 +24,14 @@ func NewWebServer(conf *WebServerConfig) *WebServer {
 }
 
 type ApplicationConfig struct {
-	*BasicAuthUser
+	*SystemSessionUser
 	*SessionConfig
 	*TemplateConfig
 	*WebServerConfig
 }
 
 var defaultApplicationConfig = &ApplicationConfig{
-	BasicAuthUser: NewBasicAuthUser(),
+	SystemSessionUser: NewBasicAuthUser(),
 	SessionConfig: &SessionConfig{
 		SessionID: "go_sess_id",
 		Domain:    "localhost",
@@ -50,7 +50,7 @@ var defaultApplicationConfig = &ApplicationConfig{
 
 type Application struct {
 	conf *ApplicationConfig
-	auth *BasicAuthUser
+	auth *SystemSessionUser
 	sess *SessionStore
 	tmpl *TemplateCache
 	serv *WebServer
@@ -64,7 +64,7 @@ func NewApplication(conf *ApplicationConfig) *Application {
 	checkConf(conf)
 	return &Application{
 		conf: conf,
-		auth: conf.BasicAuthUser,
+		auth: conf.SystemSessionUser,
 		sess: NewSessionStore(conf.SessionConfig),
 		tmpl: NewTemplateCache(conf.TemplateConfig),
 		serv: NewWebServer(conf.WebServerConfig),
