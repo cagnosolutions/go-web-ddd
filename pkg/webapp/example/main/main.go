@@ -30,7 +30,7 @@ func init() {
 	})
 
 	// init basic auth user
-	ba = webapp.NewBasicAuthUser()
+	ba = webapp.NewSystemSessionUser()
 	ba.Register("jdoe@example.com", "awesome007", "user")
 }
 

@@ -25,7 +25,6 @@ var routers = map[string]http.Handler{
 	"retable":   http.HandlerFunc(retable.Serve),
 	"shiftpath": http.HandlerFunc(shiftpath.Serve),
 	"split":     http.HandlerFunc(split.Serve),
-	"webapp":    http.HandlerFunc(webappm.ServeHTTPv2),
 }
 
 var routerNames = func() []string {

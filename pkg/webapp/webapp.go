@@ -91,7 +91,7 @@ func (app *WebApp) handleLogin() http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func (app *WebApp) LoginHandler(onSuccess http.Handler) http.Handler {
+func (app *WebApp) HandleLogin() http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		// reject non-post login calls
 		if r.Method != http.MethodPost {
@@ -115,7 +115,37 @@ func (app *WebApp) LoginHandler(onSuccess http.Handler) http.Handler {
 		sess.Set("username", user.Username)
 		app.SessionStore.Save(w, r, sess)
 		// call onSuccess
-		onSuccess.ServeHTTP(w, r)
+		app.onSuccess.ServeHTTP(w, r)
+		return
+	}
+	return http.HandlerFunc(fn)
+}
+
+func (app *WebApp) HandleRegister() http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		// reject non-post login calls
+		if r.Method != http.MethodPost {
+			code := http.StatusMethodNotAllowed
+			http.Error(w, http.StatusText(code), code)
+			return
+		}
+		// get posted form values
+		un := r.FormValue("username")
+		pw := r.FormValue("password")
+		// attempt to authenticate
+		user, ok := app.AuthUser.Authenticate(un, pw)
+		if !ok {
+			code := http.StatusUnauthorized
+			http.Error(w, http.StatusText(code), code)
+			return
+		}
+		// otherwise, start a new session
+		sess := app.SessionStore.New()
+		sess.Set("role", user.Role)
+		sess.Set("username", user.Username)
+		app.SessionStore.Save(w, r, sess)
+		// call onSuccess
+		app.onSuccess.ServeHTTP(w, r)
 		return
 	}
 	return http.HandlerFunc(fn)
